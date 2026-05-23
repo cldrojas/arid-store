@@ -1,0 +1,200 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { OrderStatusBadge } from '@/components/admin/OrderStatusBadge'
+import { formatCLP, shortId } from '@/lib/utils'
+import { imagePresets } from '@/lib/images'
+import { Button } from '@/components/ui/Button'
+import type { Order, OrderItem, OrderStatus, ShippingAddress } from '@/types'
+
+const ALLOWED_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
+  approved: ['shipped'],
+  shipped: ['delivered']
+}
+
+export default function PedidoDetallePage() {
+  const params = useParams()
+  const router = useRouter()
+  const [order, setOrder] = useState<(Order & { items: OrderItem[] }) | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [updating, setUpdating] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('orders')
+        .select('*, items:order_items(*)')
+        .eq('id', params.id)
+        .single()
+
+      if (!data) {
+        setError('Pedido no encontrado')
+      } else {
+        setOrder(data as Order & { items: OrderItem[] })
+      }
+      setLoading(false)
+    }
+
+    load()
+  }, [params.id])
+
+  async function handleStatusChange(newStatus: OrderStatus) {
+    if (!order) return
+    setUpdating(true)
+
+    const supabase = createClient()
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({ status: newStatus })
+      .eq('id', order.id)
+
+    if (updateError) {
+      setError(updateError.message)
+    } else {
+      setOrder(prev => prev ? { ...prev, status: newStatus } : prev)
+    }
+    setUpdating(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center text-neutral-500 py-12">Cargando pedido...</div>
+    )
+  }
+
+  if (error || !order) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        {error ?? 'Pedido no encontrado'}
+      </div>
+    )
+  }
+
+  const shippingAddress = order.shipping_address as ShippingAddress
+  const allowedTransitions = ALLOWED_TRANSITIONS[order.status] ?? []
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-900">
+            Pedido #{shortId(order.id)}
+          </h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            {new Date(order.created_at).toLocaleDateString('es-CL', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </p>
+        </div>
+        <OrderStatusBadge status={order.status} />
+      </div>
+
+      {/* Datos del cliente */}
+      <section className="space-y-3">
+        <h2 className="text-base font-semibold text-neutral-900">
+          Datos del cliente
+        </h2>
+        <div className="rounded-xl border border-neutral-200 bg-white p-5 text-sm">
+          <p><span className="text-neutral-500">Nombre:</span> {order.customer_name}</p>
+          <p className="mt-1"><span className="text-neutral-500">Email:</span> {order.customer_email}</p>
+          {order.customer_phone && (
+            <p className="mt-1"><span className="text-neutral-500">Teléfono:</span> {order.customer_phone}</p>
+          )}
+        </div>
+      </section>
+
+      {/* Dirección de envío */}
+      <section className="space-y-3">
+        <h2 className="text-base font-semibold text-neutral-900">
+          Dirección de envío
+        </h2>
+        <div className="rounded-xl border border-neutral-200 bg-white p-5 text-sm">
+          <p>{shippingAddress.street}</p>
+          <p>{shippingAddress.city}, {shippingAddress.region}</p>
+          {shippingAddress.zip && <p>CP: {shippingAddress.zip}</p>}
+          {shippingAddress.notes && (
+            <p className="mt-2 text-neutral-500">Notas: {shippingAddress.notes}</p>
+          )}
+        </div>
+      </section>
+
+      {/* Items del pedido */}
+      <section className="space-y-3">
+        <h2 className="text-base font-semibold text-neutral-900">Items</h2>
+        <div className="overflow-x-auto rounded-xl border border-neutral-200">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-xs font-medium uppercase text-neutral-500">
+                <th className="px-4 py-3">Producto</th>
+                <th className="px-4 py-3">Variante</th>
+                <th className="px-4 py-3">Cantidad</th>
+                <th className="px-4 py-3">Precio unitario</th>
+                <th className="px-4 py-3">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {order.items?.map(item => (
+                <tr key={item.id} className="border-b border-neutral-100 last:border-0">
+                  <td className="px-4 py-3 font-medium text-neutral-900">
+                    {item.product_name}
+                  </td>
+                  <td className="px-4 py-3 text-neutral-600">
+                    {item.variant_desc}
+                  </td>
+                  <td className="px-4 py-3 text-neutral-600">
+                    {item.quantity}
+                  </td>
+                  <td className="px-4 py-3 text-neutral-900">
+                    {formatCLP(item.unit_price)}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-neutral-900">
+                    {formatCLP(item.unit_price * item.quantity)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex justify-end pr-4">
+          <p className="text-lg font-bold text-neutral-900">
+            Total: {formatCLP(order.total_amount)}
+          </p>
+        </div>
+      </section>
+
+      {/* Cambiar estado */}
+      {allowedTransitions.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-base font-semibold text-neutral-900">
+            Actualizar estado
+          </h2>
+          <div className="flex gap-3">
+            {allowedTransitions.map(newStatus => (
+              <Button
+                key={newStatus}
+                variant="outline"
+                disabled={updating}
+                onClick={() => handleStatusChange(newStatus)}
+              >
+                {updating
+                  ? 'Actualizando...'
+                  : newStatus === 'shipped'
+                    ? 'Marcar como enviado'
+                    : `Marcar como ${newStatus}`}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}

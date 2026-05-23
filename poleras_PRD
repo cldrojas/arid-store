@@ -1,0 +1,1424 @@
+# PRD — MVP Tienda Poleras Estampadas
+**Versión:** 1.0  
+**Alcance:** Fase 1 únicamente — tienda funcional con pago real  
+**Audiencia:** Agente MiniMax M.2 (OpenCode)  
+**Stack:** Next.js 15 App Router · Supabase · Vercel · MercadoPago · Resend
+
+---
+
+## Contexto para el agente
+
+Este documento describe el MVP completo de una tienda de comercio electrónico de poleras estampadas para el mercado chileno. El objetivo es implementar el mínimo funcional que permita a un cliente real comprar un producto y al administrador gestionar el catálogo y ver los pedidos. No hay features fuera de esta lista — todo lo demás es Fase 2.
+
+Las tareas están ordenadas por dependencia de ejecución. No iniciar una tarea hasta que sus dependencias estén marcadas como completas.
+
+---
+
+## 1. Stack y decisiones de arquitectura
+
+### Stack
+
+| Capa | Tecnología | Versión |
+|---|---|---|
+| Framework | Next.js App Router | 16.2.6 |
+| Estilos | Tailwind CSS | ^4 |
+| Componentes base | Radix UI | latest |
+| Base de datos + Auth + Storage | Supabase | latest client |
+| Pagos | MercadoPago SDK Node | latest |
+| Email | Resend + React Email | latest |
+| Despliegue | Vercel | — |
+
+### Decisiones fijas — no negociar
+
+**Imágenes de producto:** Se almacenan en Supabase Storage (bucket público `product-images`). Se sirven usando la API de transformación de Supabase directamente, sin pasar por el pipeline de Image Optimization de Next.js. La razón: el plan gratuito de Vercel limita a 1.000 imágenes optimizadas por mes; Supabase Storage tiene CDN propio (Cloudflare) con transformaciones por URL que no consumen ese cupo.
+
+URL de imagen transformada:
+```
+https://{SUPABASE_URL}/storage/v1/render/image/public/product-images/{path}?width=800&quality=80&format=webp
+```
+
+Cuando se use `next/image` con imágenes de producto, siempre con `unoptimized={true}`. Para thumbnails en admin se puede usar `<img>` estándar directamente.
+
+**Precios:** Siempre enteros en CLP. Sin decimales en ninguna capa. No usar `parseFloat` para dinero.
+
+**Claves secretas:** `SUPABASE_SERVICE_ROLE_KEY` y `MP_ACCESS_TOKEN` nunca se importan en archivos que contengan `"use client"` ni en archivos bajo `app/(store)/`. Solo en Route Handlers y Server Actions.
+
+**Webhook:** Siempre retorna HTTP 200, incluso si hay error interno. Los errores se loguean con `console.error` pero no se propagan como respuesta.
+
+---
+
+## 2. Variables de entorno requeridas
+
+Crear `.env.local` con estas variables. Sin ellas el proyecto no arranca.
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# MercadoPago
+MP_ACCESS_TOKEN=APP_USR-...
+MP_WEBHOOK_SECRET=...
+NEXT_PUBLIC_MP_PUBLIC_KEY=APP_USR-...
+
+# Resend
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=tienda@tudominio.com
+
+# App
+NEXT_PUBLIC_BASE_URL=https://tudominio.vercel.app
+NEXT_PUBLIC_SUPABASE_STORAGE_URL=https://xxxx.supabase.co/storage/v1/render/image/public
+```
+
+---
+
+## 3. Estructura de directorios completa
+
+Crear esta estructura antes de cualquier implementación. Los archivos vacíos se crean con `// TODO` como único contenido hasta que se implementen.
+
+```
+/
+├── app/
+│   ├── (store)/
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   ├── productos/
+│   │   │   └── page.tsx
+│   │   ├── producto/
+│   │   │   └── [slug]/
+│   │   │       └── page.tsx
+│   │   ├── carrito/
+│   │   │   └── page.tsx
+│   │   └── checkout/
+│   │       ├── page.tsx
+│   │       └── resultado/
+│   │           └── page.tsx
+│   ├── (admin)/
+│   │   ├── layout.tsx
+│   │   ├── admin/
+│   │   │   ├── page.tsx
+│   │   │   ├── productos/
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── nuevo/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   └── [id]/
+│   │   │   │       └── page.tsx
+│   │   │   └── pedidos/
+│   │   │       ├── page.tsx
+│   │   │       └── [id]/
+│   │   │           └── page.tsx
+│   │   └── login/
+│   │       └── page.tsx
+│   └── api/
+│       ├── checkout/
+│       │   └── route.ts
+│       └── webhooks/
+│           └── mercadopago/
+│               └── route.ts
+├── components/
+│   ├── store/
+│   │   ├── ProductCard.tsx
+│   │   ├── ProductGallery.tsx
+│   │   ├── VariantSelector.tsx
+│   │   ├── AddToCartButton.tsx
+│   │   ├── CartDrawer.tsx
+│   │   ├── CartItem.tsx
+│   │   └── CheckoutForm.tsx
+│   ├── admin/
+│   │   ├── ProductForm.tsx
+│   │   ├── OrdersTable.tsx
+│   │   ├── OrderStatusBadge.tsx
+│   │   └── StatsCard.tsx
+│   └── ui/
+│       ├── Button.tsx
+│       ├── Input.tsx
+│       ├── Select.tsx
+│       ├── Badge.tsx
+│       └── Dialog.tsx
+├── context/
+│   └── CartContext.tsx
+├── lib/
+│   ├── supabase/
+│   │   ├── client.ts
+│   │   └── server.ts
+│   ├── mercadopago.ts
+│   ├── resend.ts
+│   ├── images.ts
+│   └── utils.ts
+├── types/
+│   └── index.ts
+├── emails/
+│   └── OrderConfirmation.tsx
+└── middleware.ts
+```
+
+---
+
+## 4. Tipos TypeScript centralizados
+
+Crear `types/index.ts` con estas definiciones antes de implementar cualquier componente o función.
+
+```typescript
+// types/index.ts
+
+export type Product = {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  base_price: number           // CLP entero
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  variants?: ProductVariant[]
+  images?: ProductImage[]
+}
+
+export type ProductVariant = {
+  id: string
+  product_id: string
+  size: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL'
+  color: string                // nombre legible: "Negro"
+  color_hex: string | null     // "#1a1a1a"
+  stock: number
+  sku: string | null
+  price_override: number | null
+  created_at: string
+}
+
+export type ProductImage = {
+  id: string
+  product_id: string
+  variant_id: string | null
+  storage_path: string
+  alt_text: string | null
+  sort_order: number
+  is_primary: boolean
+}
+
+export type CartItem = {
+  variantId: string
+  productName: string
+  variantDesc: string          // "Talla L - Negro"
+  price: number                // CLP entero, snapshot al añadir
+  quantity: number
+  imageUrl: string
+  slug: string
+}
+
+export type OrderStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'cancelled'
+  | 'shipped'
+  | 'delivered'
+
+export type ShippingAddress = {
+  street: string
+  city: string
+  region: string
+  zip: string | null
+  notes: string | null
+}
+
+export type Order = {
+  id: string
+  status: OrderStatus
+  mp_preference_id: string | null
+  mp_payment_id: string | null
+  total_amount: number
+  customer_email: string
+  customer_name: string
+  customer_phone: string | null
+  shipping_address: ShippingAddress
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+  items?: OrderItem[]
+}
+
+export type OrderItem = {
+  id: string
+  order_id: string
+  variant_id: string
+  product_name: string
+  variant_desc: string
+  unit_price: number
+  quantity: number
+}
+
+export type CheckoutPayload = {
+  items: Array<{
+    variantId: string
+    quantity: number
+  }>
+  customer: {
+    name: string
+    email: string
+    phone: string
+    address: ShippingAddress
+  }
+}
+
+export type CheckoutResponse =
+  | { preferenceId: string; initPoint: string }
+  | { error: 'INSUFFICIENT_STOCK'; failedItems: string[] }
+  | { error: 'VALIDATION_ERROR'; message: string }
+```
+
+---
+
+## 5. Migraciones SQL de Supabase
+
+Ejecutar estas migraciones en orden como archivos en `supabase/migrations/`.
+
+### Migración 001 — Tablas base
+
+```sql
+-- products
+CREATE TABLE products (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug        TEXT UNIQUE NOT NULL,
+  name        TEXT NOT NULL,
+  description TEXT,
+  base_price  INTEGER NOT NULL CHECK (base_price > 0),
+  is_active   BOOLEAN DEFAULT true,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- product_variants
+CREATE TABLE product_variants (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id     UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  size           TEXT NOT NULL CHECK (size IN ('XS','S','M','L','XL','XXL')),
+  color          TEXT NOT NULL,
+  color_hex      TEXT,
+  stock          INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
+  sku            TEXT UNIQUE,
+  price_override INTEGER CHECK (price_override > 0),
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- product_images
+CREATE TABLE product_images (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id   UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  variant_id   UUID REFERENCES product_variants(id) ON DELETE SET NULL,
+  storage_path TEXT NOT NULL,
+  alt_text     TEXT,
+  sort_order   INTEGER DEFAULT 0,
+  is_primary   BOOLEAN DEFAULT false
+);
+
+-- orders
+CREATE TABLE orders (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  status            TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending','approved','rejected','cancelled','shipped','delivered')),
+  mp_preference_id  TEXT,
+  mp_payment_id     TEXT,
+  total_amount      INTEGER NOT NULL CHECK (total_amount > 0),
+  customer_email    TEXT NOT NULL,
+  customer_name     TEXT NOT NULL,
+  customer_phone    TEXT,
+  shipping_address  JSONB NOT NULL,
+  metadata          JSONB DEFAULT '{}',
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- order_items
+CREATE TABLE order_items (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id     UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  variant_id   UUID NOT NULL REFERENCES product_variants(id),
+  product_name TEXT NOT NULL,
+  variant_desc TEXT NOT NULL,
+  unit_price   INTEGER NOT NULL CHECK (unit_price > 0),
+  quantity     INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0)
+);
+
+-- trigger: updated_at automático
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER products_updated_at
+  BEFORE UPDATE ON products
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER orders_updated_at
+  BEFORE UPDATE ON orders
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+```
+
+### Migración 002 — Políticas RLS
+
+```sql
+-- Habilitar RLS en todas las tablas
+ALTER TABLE products        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_variants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_images  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items     ENABLE ROW LEVEL SECURITY;
+
+-- PRODUCTS: lectura pública de activos, escritura solo admin
+CREATE POLICY "products_public_read"
+  ON products FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "products_admin_all"
+  ON products FOR ALL
+  USING (auth.jwt() ->> 'role' = 'admin')
+  WITH CHECK (auth.jwt() ->> 'role' = 'admin');
+
+-- PRODUCT_VARIANTS: lectura pública
+CREATE POLICY "variants_public_read"
+  ON product_variants FOR SELECT USING (true);
+
+CREATE POLICY "variants_admin_all"
+  ON product_variants FOR ALL
+  USING (auth.jwt() ->> 'role' = 'admin')
+  WITH CHECK (auth.jwt() ->> 'role' = 'admin');
+
+-- PRODUCT_IMAGES: lectura pública
+CREATE POLICY "images_public_read"
+  ON product_images FOR SELECT USING (true);
+
+CREATE POLICY "images_admin_all"
+  ON product_images FOR ALL
+  USING (auth.jwt() ->> 'role' = 'admin')
+  WITH CHECK (auth.jwt() ->> 'role' = 'admin');
+
+-- ORDERS: solo service_role escribe, admin lee todo
+-- (los inserts de órdenes siempre se hacen con service_role key desde el servidor)
+CREATE POLICY "orders_admin_read"
+  ON orders FOR SELECT
+  USING (auth.jwt() ->> 'role' = 'admin');
+
+-- ORDER_ITEMS: solo service_role escribe, admin lee todo
+CREATE POLICY "order_items_admin_read"
+  ON order_items FOR SELECT
+  USING (auth.jwt() ->> 'role' = 'admin');
+```
+
+### Migración 003 — Crear usuario admin
+
+```sql
+-- Ejecutar DESPUÉS de crear el usuario desde el Dashboard de Supabase Auth
+-- Reemplazar el UUID con el id real del usuario creado
+UPDATE auth.users
+SET raw_app_meta_data = raw_app_meta_data || '{"role": "admin"}'
+WHERE email = 'admin@tutienda.com';
+```
+
+### Storage — Configuración del bucket
+
+Ejecutar desde el Dashboard de Supabase → Storage, o via SQL:
+
+```sql
+-- Crear bucket público para imágenes de productos
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('product-images', 'product-images', true);
+
+-- Política: lectura pública sin restricciones
+CREATE POLICY "product_images_public_read"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'product-images');
+
+-- Política: solo admin puede subir/eliminar
+CREATE POLICY "product_images_admin_write"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'product-images'
+    AND auth.jwt() ->> 'role' = 'admin'
+  );
+
+CREATE POLICY "product_images_admin_delete"
+  ON storage.objects FOR DELETE
+  USING (
+    bucket_id = 'product-images'
+    AND auth.jwt() ->> 'role' = 'admin'
+  );
+```
+
+---
+
+## 6. Implementación de librerías base
+
+Implementar estos archivos antes de cualquier componente o página.
+
+### `lib/supabase/client.ts`
+
+```typescript
+import { createBrowserClient } from '@supabase/ssr'
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  )
+}
+```
+
+### `lib/supabase/server.ts`
+
+```typescript
+import { createServerClient as createSupabaseServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
+// Cliente con publishable key — para lectura en Server Components
+export function createServerClient() {
+  const cookieStore = cookies()
+  return createSupabaseServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll() } }
+  )
+}
+
+// Cliente con service_role — SOLO para Route Handlers y Server Actions
+// NUNCA importar en componentes client-side
+export function createAdminClient() {
+  return createSupabaseServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll: () => [] } }
+  )
+}
+```
+
+### `lib/images.ts`
+
+```typescript
+// Centraliza la lógica de URLs de imágenes
+// Todas las imágenes de producto pasan por aquí
+
+const STORAGE_URL = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_URL
+
+type ImageOptions = {
+  width?: number
+  height?: number
+  quality?: number
+  format?: 'webp' | 'jpg' | 'png'
+}
+
+export function getProductImageUrl(
+  storagePath: string,
+  options: ImageOptions = {}
+): string {
+  const { width = 800, quality = 80, format = 'webp' } = options
+  const params = new URLSearchParams({
+    width: String(width),
+    quality: String(quality),
+    format
+  })
+  if (options.height) params.set('height', String(options.height))
+
+  return `${STORAGE_URL}/product-images/${storagePath}?${params}`
+}
+
+// Versiones predefinidas para uso consistente
+export const imagePresets = {
+  thumbnail: (path: string) =>
+    getProductImageUrl(path, { width: 400, quality: 75 }),
+  card: (path: string) =>
+    getProductImageUrl(path, { width: 600, quality: 80 }),
+  detail: (path: string) =>
+    getProductImageUrl(path, { width: 900, quality: 85 }),
+  adminThumb: (path: string) =>
+    getProductImageUrl(path, { width: 200, quality: 70 })
+}
+```
+
+### `lib/utils.ts`
+
+```typescript
+// Formatear precio en CLP: 12990 → "$12.990"
+export function formatCLP(amount: number): string {
+  return new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: 'CLP',
+    maximumFractionDigits: 0
+  }).format(amount)
+}
+
+// Generar slug desde nombre: "Polera Negra Minimal" → "polera-negra-minimal"
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+}
+
+// Abreviar UUID para mostrar: "abc12345-..." → "ABC12345"
+export function shortId(uuid: string): string {
+  return uuid.replace(/-/g, '').substring(0, 8).toUpperCase()
+}
+```
+
+### `lib/mercadopago.ts`
+
+```typescript
+// IMPORTANTE: Este archivo solo se importa en server-side
+// Route Handlers y Server Actions únicamente
+import { MercadoPagoConfig, Preference } from 'mercadopago'
+
+const client = new MercadoPagoConfig({
+  accessToken: process.env.MP_ACCESS_TOKEN!
+})
+
+type CreatePreferenceInput = {
+  orderId: string
+  items: Array<{
+    title: string
+    unit_price: number   // CLP entero
+    quantity: number
+  }>
+  payer: {
+    name: string
+    email: string
+  }
+}
+
+export async function createPreference(input: CreatePreferenceInput) {
+  const preference = new Preference(client)
+
+  return preference.create({
+    body: {
+      items: input.items.map(item => ({
+        title: item.title,
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+        currency_id: 'CLP'
+      })),
+      payer: {
+        name: input.payer.name,
+        email: input.payer.email
+      },
+      external_reference: input.orderId,
+      back_urls: {
+        success: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resultado?status=approved`,
+        failure: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resultado?status=rejected`,
+        pending: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resultado?status=pending`
+      },
+      auto_return: 'approved',
+      notification_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/mercadopago`
+    }
+  })
+}
+```
+
+### `lib/resend.ts`
+
+```typescript
+import { Resend } from 'resend'
+import { OrderConfirmation } from '@/emails/OrderConfirmation'
+import type { Order } from '@/types'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+export async function sendOrderConfirmation(order: Order): Promise<void> {
+  try {
+    await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL!,
+      to: order.customer_email,
+      subject: `Pedido confirmado #${order.id.substring(0, 8).toUpperCase()}`,
+      react: OrderConfirmation({ order })
+    })
+  } catch (error) {
+    // Error no fatal: el pago ya fue procesado
+    // El email puede fallar sin afectar la orden
+    console.error('[Resend] Error enviando email de confirmación:', error)
+  }
+}
+```
+
+---
+
+## 7. Middleware de autenticación
+
+```typescript
+// middleware.ts
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // Solo aplica a rutas de admin (excepto login)
+  if (!pathname.startsWith('/admin') || pathname === '/admin/login') {
+    return NextResponse.next()
+  }
+
+  const response = NextResponse.next()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookies) => cookies.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options)
+        )
+      }
+    }
+  )
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.redirect(new URL('/admin/login', request.url))
+  }
+
+  const role = user.app_metadata?.role
+  if (role !== 'admin') {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  return response
+}
+
+export const config = {
+  matcher: ['/admin/:path*']
+}
+```
+
+---
+
+## 8. CartContext
+
+```typescript
+// context/CartContext.tsx
+'use client'
+
+import {
+  createContext, useContext, useEffect, useReducer,
+  type ReactNode
+} from 'react'
+import type { CartItem } from '@/types'
+
+type CartState = {
+  items: CartItem[]
+}
+
+type CartAction =
+  | { type: 'ADD_ITEM'; payload: CartItem }
+  | { type: 'REMOVE_ITEM'; variantId: string }
+  | { type: 'UPDATE_QUANTITY'; variantId: string; quantity: number }
+  | { type: 'CLEAR_CART' }
+  | { type: 'LOAD_FROM_STORAGE'; items: CartItem[] }
+
+function cartReducer(state: CartState, action: CartAction): CartState {
+  switch (action.type) {
+    case 'LOAD_FROM_STORAGE':
+      return { items: action.items }
+
+    case 'ADD_ITEM': {
+      const existing = state.items.find(i => i.variantId === action.payload.variantId)
+      if (existing) {
+        return {
+          items: state.items.map(i =>
+            i.variantId === action.payload.variantId
+              ? { ...i, quantity: i.quantity + action.payload.quantity }
+              : i
+          )
+        }
+      }
+      return { items: [...state.items, action.payload] }
+    }
+
+    case 'REMOVE_ITEM':
+      return { items: state.items.filter(i => i.variantId !== action.variantId) }
+
+    case 'UPDATE_QUANTITY':
+      if (action.quantity <= 0) {
+        return { items: state.items.filter(i => i.variantId !== action.variantId) }
+      }
+      return {
+        items: state.items.map(i =>
+          i.variantId === action.variantId
+            ? { ...i, quantity: action.quantity }
+            : i
+        )
+      }
+
+    case 'CLEAR_CART':
+      return { items: [] }
+
+    default:
+      return state
+  }
+}
+
+type CartContextValue = {
+  items: CartItem[]
+  itemCount: number
+  total: number
+  addItem: (item: CartItem) => void
+  removeItem: (variantId: string) => void
+  updateQuantity: (variantId: string, quantity: number) => void
+  clearCart: () => void
+}
+
+const CartContext = createContext<CartContextValue | null>(null)
+const CART_STORAGE_KEY = 'cart_v1'
+
+export function CartProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(cartReducer, { items: [] })
+
+  // Cargar desde localStorage al montar
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CART_STORAGE_KEY)
+      if (saved) {
+        const items = JSON.parse(saved) as CartItem[]
+        dispatch({ type: 'LOAD_FROM_STORAGE', items })
+      }
+    } catch {
+      localStorage.removeItem(CART_STORAGE_KEY)
+    }
+  }, [])
+
+  // Persistir en localStorage en cada cambio
+  useEffect(() => {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items))
+  }, [state.items])
+
+  const total = state.items.reduce((acc, item) => acc + item.price * item.quantity, 0)
+  const itemCount = state.items.reduce((acc, item) => acc + item.quantity, 0)
+
+  return (
+    <CartContext.Provider value={{
+      items: state.items,
+      itemCount,
+      total,
+      addItem: (item) => dispatch({ type: 'ADD_ITEM', payload: item }),
+      removeItem: (variantId) => dispatch({ type: 'REMOVE_ITEM', variantId }),
+      updateQuantity: (variantId, quantity) =>
+        dispatch({ type: 'UPDATE_QUANTITY', variantId, quantity }),
+      clearCart: () => dispatch({ type: 'CLEAR_CART' })
+    }}>
+      {children}
+    </CartContext.Provider>
+  )
+}
+
+export function useCart(): CartContextValue {
+  const ctx = useContext(CartContext)
+  if (!ctx) throw new Error('useCart debe usarse dentro de CartProvider')
+  return ctx
+}
+```
+
+---
+
+## 9. API Routes
+
+### `app/api/checkout/route.ts`
+
+```typescript
+import { NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/server'
+import { createPreference } from '@/lib/mercadopago'
+import type { CheckoutPayload, CheckoutResponse } from '@/types'
+
+export async function POST(req: Request): Promise<NextResponse<CheckoutResponse>> {
+  try {
+    const body: CheckoutPayload = await req.json()
+    const { items, customer } = body
+
+    // 1. Validación básica
+    if (!items?.length || !customer?.email || !customer?.name) {
+      return NextResponse.json(
+        { error: 'VALIDATION_ERROR', message: 'Datos incompletos' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = createAdminClient()
+
+    // 2. Verificar stock y obtener precios reales desde Supabase
+    const variantIds = items.map(i => i.variantId)
+    const { data: variants, error: variantsError } = await supabase
+      .from('product_variants')
+      .select('id, stock, price_override, product_id, size, color, products(name, base_price)')
+      .in('id', variantIds)
+
+    if (variantsError || !variants) {
+      return NextResponse.json(
+        { error: 'VALIDATION_ERROR', message: 'Error al verificar productos' },
+        { status: 500 }
+      )
+    }
+
+    // 3. Verificar que todos los variants existen y tienen stock
+    const failedItems: string[] = []
+    const enrichedItems: Array<{
+      variantId: string
+      title: string
+      unit_price: number
+      quantity: number
+      variantDesc: string
+    }> = []
+
+    for (const item of items) {
+      const variant = variants.find(v => v.id === item.variantId)
+
+      if (!variant) {
+        failedItems.push(item.variantId)
+        continue
+      }
+
+      if (variant.stock < item.quantity) {
+        failedItems.push(item.variantId)
+        continue
+      }
+
+      const product = variant.products as { name: string; base_price: number }
+      const unit_price = variant.price_override ?? product.base_price
+
+      enrichedItems.push({
+        variantId: item.variantId,
+        title: `${product.name} - Talla ${variant.size} ${variant.color}`,
+        unit_price,
+        quantity: item.quantity,
+        variantDesc: `Talla ${variant.size} - ${variant.color}`
+      })
+    }
+
+    if (failedItems.length > 0) {
+      return NextResponse.json(
+        { error: 'INSUFFICIENT_STOCK', failedItems },
+        { status: 409 }
+      )
+    }
+
+    const totalAmount = enrichedItems.reduce(
+      (acc, item) => acc + item.unit_price * item.quantity,
+      0
+    )
+
+    // 4. Crear orden en Supabase con status='pending'
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        status: 'pending',
+        total_amount: totalAmount,
+        customer_email: customer.email,
+        customer_name: customer.name,
+        customer_phone: customer.phone ?? null,
+        shipping_address: customer.address
+      })
+      .select('id')
+      .single()
+
+    if (orderError || !order) {
+      return NextResponse.json(
+        { error: 'VALIDATION_ERROR', message: 'Error al crear la orden' },
+        { status: 500 }
+      )
+    }
+
+    // 5. Insertar order_items
+    await supabase.from('order_items').insert(
+      enrichedItems.map(item => ({
+        order_id: order.id,
+        variant_id: item.variantId,
+        product_name: item.title,
+        variant_desc: item.variantDesc,
+        unit_price: item.unit_price,
+        quantity: item.quantity
+      }))
+    )
+
+    // 6. Crear preferencia en MercadoPago
+    const preference = await createPreference({
+      orderId: order.id,
+      items: enrichedItems.map(i => ({
+        title: i.title,
+        unit_price: i.unit_price,
+        quantity: i.quantity
+      })),
+      payer: {
+        name: customer.name,
+        email: customer.email
+      }
+    })
+
+    // 7. Guardar preference_id en la orden
+    await supabase
+      .from('orders')
+      .update({ mp_preference_id: preference.id })
+      .eq('id', order.id)
+
+    return NextResponse.json({
+      preferenceId: preference.id!,
+      initPoint: preference.init_point!
+    })
+
+  } catch (error) {
+    console.error('[Checkout API]', error)
+    return NextResponse.json(
+      { error: 'VALIDATION_ERROR', message: 'Error interno del servidor' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+### `app/api/webhooks/mercadopago/route.ts`
+
+```typescript
+import { NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/server'
+import { sendOrderConfirmation } from '@/lib/resend'
+import type { Order, OrderStatus } from '@/types'
+
+// Mapa de estados de MercadoPago a estados internos
+const MP_STATUS_MAP: Record<string, OrderStatus> = {
+  approved: 'approved',
+  rejected: 'rejected',
+  cancelled: 'cancelled',
+  refunded: 'cancelled',
+  charged_back: 'cancelled',
+  in_process: 'pending',
+  pending: 'pending',
+  authorized: 'pending'
+}
+
+export async function POST(req: Request): Promise<NextResponse> {
+  try {
+    const body = await req.json()
+    const { action, data } = body
+
+    // Solo procesar eventos de pago
+    if (!['payment.updated', 'payment.created'].includes(action)) {
+      return NextResponse.json({ ok: true })
+    }
+
+    const paymentId = data?.id
+    if (!paymentId) return NextResponse.json({ ok: true })
+
+    // Consultar el pago en MercadoPago
+    const mpResponse = await fetch(
+      `https://api.mercadopago.com/v1/payments/${paymentId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`
+        }
+      }
+    )
+
+    if (!mpResponse.ok) {
+      console.error(`[Webhook MP] Error consultando payment ${paymentId}`)
+      return NextResponse.json({ ok: true }) // siempre 200
+    }
+
+    const payment = await mpResponse.json()
+    const orderId: string = payment.external_reference
+    const mpStatus: string = payment.status
+    const newStatus = MP_STATUS_MAP[mpStatus] ?? 'pending'
+
+    if (!orderId) {
+      console.error('[Webhook MP] external_reference vacío')
+      return NextResponse.json({ ok: true })
+    }
+
+    const supabase = createAdminClient()
+
+    // Verificar idempotencia: si ya tiene este mp_payment_id, no reprocesar
+    const { data: existingOrder } = await supabase
+      .from('orders')
+      .select('id, status, mp_payment_id, customer_email')
+      .eq('id', orderId)
+      .single()
+
+    if (!existingOrder) {
+      console.error(`[Webhook MP] Orden ${orderId} no encontrada`)
+      return NextResponse.json({ ok: true })
+    }
+
+    if (existingOrder.mp_payment_id === String(paymentId)) {
+      // Ya procesado, idempotente
+      return NextResponse.json({ ok: true })
+    }
+
+    // Actualizar estado de la orden
+    await supabase
+      .from('orders')
+      .update({
+        status: newStatus,
+        mp_payment_id: String(paymentId),
+        metadata: payment
+      })
+      .eq('id', orderId)
+
+    // Acciones post-pago aprobado
+    if (newStatus === 'approved' && existingOrder.status !== 'approved') {
+      // Descontar stock de cada variant de forma segura
+      const { data: orderItems } = await supabase
+        .from('order_items')
+        .select('variant_id, quantity')
+        .eq('order_id', orderId)
+
+      if (orderItems) {
+        for (const item of orderItems) {
+          // UPDATE con CHECK para nunca bajar de 0
+          await supabase.rpc('decrement_stock', {
+            p_variant_id: item.variant_id,
+            p_quantity: item.quantity
+          })
+        }
+      }
+
+      // Obtener orden completa para el email
+      const { data: fullOrder } = await supabase
+        .from('orders')
+        .select('*, items:order_items(*)')
+        .eq('id', orderId)
+        .single()
+
+      if (fullOrder) {
+        await sendOrderConfirmation(fullOrder as Order)
+      }
+    }
+
+    return NextResponse.json({ ok: true })
+
+  } catch (error) {
+    console.error('[Webhook MP] Error no controlado:', error)
+    return NextResponse.json({ ok: true }) // siempre 200
+  }
+}
+```
+
+### Función RPC para descuento de stock (agregar en Supabase)
+
+```sql
+-- Crear esta función en Supabase para evitar race conditions
+CREATE OR REPLACE FUNCTION decrement_stock(p_variant_id UUID, p_quantity INTEGER)
+RETURNS void AS $$
+BEGIN
+  UPDATE product_variants
+  SET stock = GREATEST(0, stock - p_quantity)
+  WHERE id = p_variant_id AND stock >= p_quantity;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Stock insuficiente para variant %', p_variant_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+---
+
+## 10. Páginas clave — especificación de comportamiento
+
+### `app/(store)/page.tsx` — Home
+
+**Renderizado:** Server Component, `revalidate = 60`
+
+**Contenido:**
+1. Hero: imagen de fondo, título de la tienda, subtítulo, botón "Ver colección" → `/productos`
+2. Sección "Nuevos diseños": grilla de máximo 4 productos activos ordenados por `created_at DESC`
+3. Cada producto renderiza `<ProductCard>`
+
+**Query Supabase:**
+```typescript
+const { data: products } = await supabase
+  .from('products')
+  .select(`
+    id, slug, name, base_price,
+    images:product_images(storage_path, is_primary, sort_order)
+  `)
+  .eq('is_active', true)
+  .order('created_at', { ascending: false })
+  .limit(4)
+```
+
+### `app/(store)/productos/page.tsx` — Catálogo
+
+**Renderizado:** Server Component, `revalidate = 60`
+
+**Contenido:**
+1. Título de sección
+2. Grilla responsive de todos los productos activos con `<ProductCard>`
+3. Si no hay productos: mensaje "Próximamente nuevos diseños"
+
+**Query:** Igual que home pero sin `.limit(4)`
+
+### `app/(store)/producto/[slug]/page.tsx` — Detalle de producto
+
+**Renderizado:** Server Component + Client components para selector e interacción, `revalidate = 60`
+
+**Contenido:**
+1. Galería de imágenes (`<ProductGallery>`) — imagen principal + thumbnails
+2. Nombre del producto
+3. Precio del variant seleccionado (reactivo) en CLP
+4. Descripción
+5. Selector de color (`<VariantSelector type="color">`)
+6. Selector de talla (`<VariantSelector type="size">`)
+7. Contador de stock del variant seleccionado: "Últimas X unidades" si stock < 5; "Sin stock" si stock === 0
+8. Botón `<AddToCartButton>` — deshabilitado si stock === 0
+
+**Lógica del selector de variantes:**
+- La selección de color filtra qué tallas están disponibles con stock > 0
+- La selección de talla filtra qué colores están disponibles con stock > 0
+- Una combinación con stock 0 muestra el botón con clase `opacity-40 cursor-not-allowed` y no puede seleccionarse
+
+**generateStaticParams:**
+```typescript
+export async function generateStaticParams() {
+  const supabase = createServerClient()
+  const { data } = await supabase
+    .from('products')
+    .select('slug')
+    .eq('is_active', true)
+  return data?.map(p => ({ slug: p.slug })) ?? []
+}
+```
+
+### `app/(store)/checkout/page.tsx` — Checkout
+
+**Renderizado:** Client Component (necesita estado del carrito)
+
+**Comportamiento:**
+1. Si el carrito está vacío, redirigir a `/carrito`
+2. Mostrar resumen del carrito (solo lectura, sin edición)
+3. Formulario con campos: nombre completo, email, teléfono, calle + número, ciudad, región (select con regiones de Chile), código postal (opcional), notas de envío (opcional)
+4. Validación: nombre y email requeridos, email con formato válido
+5. Al submit:
+   - Mostrar estado de carga en el botón
+   - POST a `/api/checkout` con los items del carrito y datos del cliente
+   - Si respuesta 409 (stock insuficiente): mostrar error con nombre de los productos sin stock
+   - Si respuesta exitosa: redirigir a `initPoint` de MercadoPago
+
+### `app/(store)/checkout/resultado/page.tsx` — Resultado del pago
+
+**Renderizado:** Client Component
+
+**Comportamiento:**
+- Leer query param `?status=approved|rejected|pending`
+- `approved`: limpiar carrito con `clearCart()`, mostrar mensaje de éxito con número de pedido si está disponible en query params de MP
+- `rejected`: mostrar mensaje de error, botón "Intentar de nuevo" → `/checkout`
+- `pending`: mostrar mensaje informativo, indicar que se notificará por email
+
+### `app/(admin)/admin/page.tsx` — Dashboard admin
+
+**Renderizado:** Server Component
+
+**Contenido — 4 tarjetas `<StatsCard>`:**
+1. Pedidos del día (COUNT de orders con `created_at >= today`)
+2. Ventas del mes en CLP (SUM de `total_amount` donde `status = 'approved'` en el mes actual)
+3. Pedidos pendientes (COUNT donde `status = 'pending'`)
+4. Productos con stock bajo (COUNT de variants con `stock < 5`)
+
+### `app/(admin)/admin/productos/page.tsx` — Lista de productos
+
+**Columnas de la tabla:**
+- Imagen (thumbnail 64×64)
+- Nombre (con slug debajo en gris)
+- Precio base formateado
+- N° de variantes
+- Stock total (suma de todos los variants)
+- Estado (toggle activo/inactivo)
+- Acciones: "Editar" → `/admin/productos/[id]`
+
+**Botón "Nuevo producto"** → `/admin/productos/nuevo`
+
+### `app/(admin)/admin/pedidos/page.tsx` — Lista de pedidos
+
+**Columnas:**
+- ID corto (8 chars)
+- Fecha (formato `DD/MM/YYYY HH:mm`)
+- Cliente (nombre + email debajo)
+- Total en CLP
+- Estado con `<OrderStatusBadge>`
+
+**Filtro por estado:** Tabs o select con opciones: Todos, Pendiente, Pagado, Enviado, Entregado
+
+**Click en fila** → `/admin/pedidos/[id]`
+
+### `app/(admin)/admin/pedidos/[id]/page.tsx` — Detalle de pedido
+
+**Secciones:**
+1. Header: ID corto, fecha, estado actual
+2. Datos del cliente: nombre, email, teléfono
+3. Dirección de envío: campos de `shipping_address` JSONB
+4. Items del pedido: tabla con imagen thumbnail, nombre del producto, variante, cantidad, precio unitario, subtotal
+5. Total del pedido
+6. Selector de estado manual: permite cambiar a `shipped` o `delivered` únicamente (no puede retrogradar el estado)
+
+---
+
+## 11. Email template
+
+### `emails/OrderConfirmation.tsx`
+
+```typescript
+import {
+  Html, Head, Preview, Body, Container,
+  Heading, Text, Section, Row, Column, Hr
+} from '@react-email/components'
+import { formatCLP, shortId } from '@/lib/utils'
+import type { Order } from '@/types'
+
+type Props = { order: Order }
+
+export function OrderConfirmation({ order }: Props) {
+  return (
+    <Html>
+      <Head />
+      <Preview>Tu pedido #{shortId(order.id)} fue confirmado</Preview>
+      <Body style={{ fontFamily: 'sans-serif', backgroundColor: '#f5f5f5' }}>
+        <Container style={{ maxWidth: 600, margin: '0 auto', padding: 24 }}>
+
+          <Heading style={{ fontSize: 24, marginBottom: 8 }}>
+            ¡Pedido confirmado!
+          </Heading>
+
+          <Text style={{ color: '#666' }}>
+            Hola {order.customer_name}, recibimos tu pedido y está siendo preparado.
+          </Text>
+
+          <Text style={{ fontWeight: 'bold' }}>
+            N° de pedido: #{shortId(order.id)}
+          </Text>
+
+          <Hr />
+
+          <Heading as="h2" style={{ fontSize: 18 }}>Resumen</Heading>
+          {order.items?.map(item => (
+            <Row key={item.id}>
+              <Column>{item.product_name}</Column>
+              <Column>{item.variant_desc}</Column>
+              <Column>x{item.quantity}</Column>
+              <Column>{formatCLP(item.unit_price * item.quantity)}</Column>
+            </Row>
+          ))}
+
+          <Hr />
+
+          <Text style={{ textAlign: 'right', fontWeight: 'bold', fontSize: 18 }}>
+            Total: {formatCLP(order.total_amount)}
+          </Text>
+
+          <Hr />
+
+          <Heading as="h2" style={{ fontSize: 18 }}>Dirección de envío</Heading>
+          <Text>
+            {order.shipping_address.street}<br />
+            {order.shipping_address.city}, {order.shipping_address.region}
+            {order.shipping_address.notes && (
+              <><br />Notas: {order.shipping_address.notes}</>
+            )}
+          </Text>
+
+          <Hr />
+
+          <Text style={{ color: '#999', fontSize: 12 }}>
+            Te avisaremos cuando tu pedido sea despachado.
+            Ante cualquier consulta responde este correo.
+          </Text>
+
+        </Container>
+      </Body>
+    </Html>
+  )
+}
+```
+
+---
+
+## 12. Orden de ejecución
+
+Implementar en este orden estricto. No avanzar si la tarea anterior tiene errores de build o de tipos.
+
+```
+1.  [SETUP]     Crear proyecto Next.js 15, instalar dependencias, configurar Tailwind 4 y Radix UI
+2.  [SETUP]     Crear .env.local con todas las variables definidas en §2
+3.  [SETUP]     Crear estructura de directorios completa según §3 (archivos vacíos)
+4.  [TIPOS]     Implementar types/index.ts completo según §4
+5.  [LIB]       Implementar lib/supabase/client.ts y lib/supabase/server.ts
+6.  [LIB]       Implementar lib/images.ts, lib/utils.ts, lib/mercadopago.ts, lib/resend.ts
+7.  [DB]        Ejecutar migraciones SQL en Supabase: tablas → RLS → Storage → función RPC
+8.  [DB]        Crear usuario admin y asignar rol en app_metadata
+9.  [CONTEXT]   Implementar CartContext.tsx completo según §8
+10. [MIDDLEWARE] Implementar middleware.ts según §7
+11. [UI BASE]   Implementar componentes en components/ui/ (Button, Input, Select, Badge, Dialog)
+12. [API]       Implementar /api/checkout/route.ts según §9
+13. [API]       Implementar /api/webhooks/mercadopago/route.ts según §9
+14. [STORE]     Implementar ProductCard, ProductGallery, VariantSelector
+15. [STORE]     Implementar AddToCartButton, CartDrawer, CartItem
+16. [STORE]     Implementar layout de (store): header con CartDrawer, footer
+17. [STORE]     Implementar página Home (/)
+18. [STORE]     Implementar página Catálogo (/productos)
+19. [STORE]     Implementar página Detalle (/producto/[slug])
+20. [STORE]     Implementar página Carrito (/carrito)
+21. [STORE]     Implementar CheckoutForm y página Checkout (/checkout)
+22. [STORE]     Implementar página Resultado (/checkout/resultado)
+23. [ADMIN]     Implementar página Login (/admin/login)
+24. [ADMIN]     Implementar layout de (admin): sidebar, verificación de sesión
+25. [ADMIN]     Implementar StatsCard, OrderStatusBadge, OrdersTable
+26. [ADMIN]     Implementar Dashboard (/admin)
+27. [ADMIN]     Implementar ProductForm, lista y detalle de productos (/admin/productos)
+28. [ADMIN]     Implementar lista y detalle de pedidos (/admin/pedidos)
+29. [EMAIL]     Implementar OrderConfirmation.tsx según §11
+30. [DATOS]     Cargar 3 productos reales con variantes e imágenes en producción
+31. [TEST]      Flujo completo en sandbox de MercadoPago: compra → pago → webhook → email
+32. [DEPLOY]    Deploy a Vercel con variables de entorno de producción
+```
+
+---
+
+## 13. Dependencias npm a instalar
+
+```bash
+pnpm add \
+  @supabase/supabase-js \
+  @supabase/ssr \
+  mercadopago \
+  resend \
+  @react-email/components \
+  react-email \
+  @radix-ui/react-dialog \
+  @radix-ui/react-select \
+  @radix-ui/react-slot \
+  zod
+
+pnpm add -D \
+  @types/node \
+  typescript
+```
+
+---
+
+## 14. Criterios de aceptación del MVP
+
+El MVP está completo cuando se cumplen TODAS estas condiciones:
+
+- [ ] Usuario puede navegar el catálogo desde la URL de producción en Vercel
+- [ ] Usuario puede seleccionar un producto, talla y color, y añadir al carrito
+- [ ] El carrito persiste si el usuario cierra y reabre el navegador
+- [ ] Una variante sin stock aparece visualmente deshabilitada y no puede añadirse al carrito
+- [ ] El checkout completa la redirección a MercadoPago con el total correcto
+- [ ] El webhook actualiza el estado de la orden a `approved` cuando el pago es exitoso (verificar en Supabase)
+- [ ] El stock del variant se descuenta correctamente tras pago aprobado
+- [ ] El cliente recibe un email de confirmación con el resumen del pedido
+- [ ] El administrador puede ver el pedido en `/admin/pedidos`
+- [ ] El administrador puede crear y editar productos con variantes e imágenes
+- [ ] El panel admin redirige a `/admin/login` si se accede sin sesión
+- [ ] Las imágenes se sirven desde Supabase Storage (no desde Vercel Blob)
+- [ ] El build de producción (`pnpm build`) termina sin errores de TypeScript ni de linting
+
+---
+
+*Fin del documento MVP. Versión 1.0*
