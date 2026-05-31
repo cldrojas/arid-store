@@ -36,14 +36,8 @@ export async function createPreference(input: CreatePreferenceInput) {
         email: input.payer.email
       },
       external_reference: input.orderId,
-      back_urls: {
-        success: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resultado?status=approved`,
-        failure: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resultado?status=rejected`,
-        pending: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resultado?status=pending`
-      },
-      // auto_return solo funciona con HTTPS y URLs registradas en la app de MP
-      // Se activa al hacer deploy a Vercel
-      // auto_return: 'approved',
+      // back_urls se configuran desde el dashboard de Mercado Pago
+      // para evitar errores por URL inválida en preview/desarrollo
       notification_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/mercadopago`
     }
   })
