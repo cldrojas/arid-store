@@ -61,7 +61,7 @@ export default function StoreLayout({ children }: { children: ReactNode }) {
   return (
     <CartProvider>
       <StoreHeader />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 bg-linear-to-b from-neutral-50 to-white">{children}</main>
       <StoreFooter />
     </CartProvider>
   )

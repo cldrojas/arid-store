@@ -41,7 +41,9 @@ export async function createPreference(input: CreatePreferenceInput) {
         failure: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resultado?status=rejected`,
         pending: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resultado?status=pending`
       },
-      auto_return: 'approved',
+      // auto_return solo funciona con HTTPS y URLs registradas en la app de MP
+      // Se activa al hacer deploy a Vercel
+      // auto_return: 'approved',
       notification_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/mercadopago`
     }
   })

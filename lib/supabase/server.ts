@@ -16,7 +16,7 @@ export async function createServerClient() {
 export function createAdminClient() {
   return createSupabaseServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { cookies: { getAll: () => [] } }
   )
 }

@@ -2,9 +2,24 @@ import { Resend } from 'resend'
 import { OrderConfirmation } from '@/emails/OrderConfirmation'
 import type { Order } from '@/types'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+let _resend: Resend | null = null
+
+function getResend(): Resend | null {
+  if (!_resend) {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) {
+      console.warn('[Resend] RESEND_API_KEY no configurado — emails desactivados')
+      return null
+    }
+    _resend = new Resend(apiKey)
+  }
+  return _resend
+}
 
 export async function sendOrderConfirmation(order: Order): Promise<void> {
+  const resend = getResend()
+  if (!resend) return
+
   try {
     await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL!,
