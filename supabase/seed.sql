@@ -17,7 +17,7 @@ VALUES (
 
 -- Variantes Polera Negra Minimal
 INSERT INTO product_variants (product_id, size, color, color_hex, stock, sku, price_override)
-SELECT p.id, v.size, v.color, v.color_hex, v.stock, v.sku, v.price_override
+SELECT p.id, v.size, v.color, v.color_hex, v.stock, v.sku, v.price_override::int
 FROM products p
 CROSS JOIN (VALUES
   ('S', 'Negro', '#1a1a1a', 10, 'MN-NEG-S', NULL),
@@ -43,7 +43,7 @@ VALUES (
 
 -- Variantes Polera Azul Aventura
 INSERT INTO product_variants (product_id, size, color, color_hex, stock, sku, price_override)
-SELECT p.id, v.size, v.color, v.color_hex, v.stock, v.sku, v.price_override
+SELECT p.id, v.size, v.color, v.color_hex, v.stock, v.sku, v.price_override::int
 FROM products p
 CROSS JOIN (VALUES
   ('M', 'Azul Marino', '#1a2744', 18, 'AV-MAR-M', NULL),
@@ -67,7 +67,7 @@ VALUES (
 
 -- Variantes Polera Blanca Esencia
 INSERT INTO product_variants (product_id, size, color, color_hex, stock, sku, price_override)
-SELECT p.id, v.size, v.color, v.color_hex, v.stock, v.sku, v.price_override
+SELECT p.id, v.size, v.color, v.color_hex, v.stock, v.sku, v.price_override::int
 FROM products p
 CROSS JOIN (VALUES
   ('L', 'Blanco', '#ffffff', 5, 'ES-BLAN-L', 21990),
