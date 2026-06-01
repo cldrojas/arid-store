@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useActionState } from 'react'
+import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { OrderStatusBadge } from '@/components/admin/OrderStatusBadge'
 import { formatCLP, shortId } from '@/lib/utils'
-import { imagePresets } from '@/lib/images'
 import { Button } from '@/components/ui/Button'
+import { updateOrderStatus, type OrderActionState } from '@/lib/actions/orders'
 import type { Order, OrderItem, OrderStatus, ShippingAddress } from '@/types'
 
 const ALLOWED_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
@@ -16,11 +17,9 @@ const ALLOWED_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
 
 export default function PedidoDetallePage() {
   const params = useParams()
-  const router = useRouter()
   const [order, setOrder] = useState<(Order & { items: OrderItem[] }) | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [updating, setUpdating] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -43,27 +42,21 @@ export default function PedidoDetallePage() {
   }, [params.id])
 
   async function handleStatusChange(newStatus: OrderStatus) {
-    if (!order) return
-    setUpdating(true)
+    const payload = new FormData()
+    payload.set('orderId', order!.id)
+    payload.set('status', newStatus)
 
-    const supabase = createClient()
-    const { error: updateError } = await supabase
-      .from('orders')
-      .update({ status: newStatus })
-      .eq('id', order.id)
+    const result = await updateOrderStatus({} as OrderActionState, payload)
 
-    if (updateError) {
-      setError(updateError.message)
-    } else {
+    if (result.success) {
       setOrder(prev => prev ? { ...prev, status: newStatus } : prev)
+    } else {
+      setError(result.error ?? 'Error al actualizar estado')
     }
-    setUpdating(false)
   }
 
   if (loading) {
-    return (
-      <div className="text-center text-neutral-500 py-12">Cargando pedido...</div>
-    )
+    return <div className="text-center text-neutral-500 py-12">Cargando pedido...</div>
   }
 
   if (error || !order) {
@@ -100,9 +93,7 @@ export default function PedidoDetallePage() {
 
       {/* Datos del cliente */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold text-neutral-900">
-          Datos del cliente
-        </h2>
+        <h2 className="text-base font-semibold text-neutral-900">Datos del cliente</h2>
         <div className="rounded-xl border border-neutral-200 bg-white p-5 text-sm">
           <p><span className="text-neutral-500">Nombre:</span> {order.customer_name}</p>
           <p className="mt-1"><span className="text-neutral-500">Email:</span> {order.customer_email}</p>
@@ -114,9 +105,7 @@ export default function PedidoDetallePage() {
 
       {/* Dirección de envío */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold text-neutral-900">
-          Dirección de envío
-        </h2>
+        <h2 className="text-base font-semibold text-neutral-900">Dirección de envío</h2>
         <div className="rounded-xl border border-neutral-200 bg-white p-5 text-sm">
           <p>{shippingAddress.street}</p>
           <p>{shippingAddress.city}, {shippingAddress.region}</p>
@@ -144,52 +133,35 @@ export default function PedidoDetallePage() {
             <tbody>
               {order.items?.map(item => (
                 <tr key={item.id} className="border-b border-neutral-100 last:border-0">
-                  <td className="px-4 py-3 font-medium text-neutral-900">
-                    {item.product_name}
-                  </td>
-                  <td className="px-4 py-3 text-neutral-600">
-                    {item.variant_desc}
-                  </td>
-                  <td className="px-4 py-3 text-neutral-600">
-                    {item.quantity}
-                  </td>
-                  <td className="px-4 py-3 text-neutral-900">
-                    {formatCLP(item.unit_price)}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-neutral-900">
-                    {formatCLP(item.unit_price * item.quantity)}
-                  </td>
+                  <td className="px-4 py-3 font-medium text-neutral-900">{item.product_name}</td>
+                  <td className="px-4 py-3 text-neutral-600">{item.variant_desc}</td>
+                  <td className="px-4 py-3 text-neutral-600">{item.quantity}</td>
+                  <td className="px-4 py-3 text-neutral-900">{formatCLP(item.unit_price)}</td>
+                  <td className="px-4 py-3 font-medium text-neutral-900">{formatCLP(item.unit_price * item.quantity)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <div className="flex justify-end pr-4">
-          <p className="text-lg font-bold text-neutral-900">
-            Total: {formatCLP(order.total_amount)}
-          </p>
+          <p className="text-lg font-bold text-neutral-900">Total: {formatCLP(order.total_amount)}</p>
         </div>
       </section>
 
       {/* Cambiar estado */}
       {allowedTransitions.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-base font-semibold text-neutral-900">
-            Actualizar estado
-          </h2>
+          <h2 className="text-base font-semibold text-neutral-900">Actualizar estado</h2>
           <div className="flex gap-3">
             {allowedTransitions.map(newStatus => (
               <Button
                 key={newStatus}
                 variant="outline"
-                disabled={updating}
                 onClick={() => handleStatusChange(newStatus)}
               >
-                {updating
-                  ? 'Actualizando...'
-                  : newStatus === 'shipped'
-                    ? 'Marcar como enviado'
-                    : `Marcar como ${newStatus}`}
+                {newStatus === 'shipped'
+                  ? 'Marcar como enviado'
+                  : `Marcar como ${newStatus}`}
               </Button>
             ))}
           </div>

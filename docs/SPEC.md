@@ -1,7 +1,7 @@
 # Arid Store — Especificación Técnica
 
 > Basado en el PRD v1.0 — MVP Tienda Poleras Estampadas
-> Stack: Next.js 15 App Router · Supabase · Vercel · MercadoPago · Resend
+> Stack: Next.js 16 App Router · Supabase · Vercel · MercadoPago · Resend
 
 ---
 
@@ -12,9 +12,9 @@
 - [3. Tipos TypeScript](#3-tipos-typescript)
 - [4. Base de datos (Supabase)](#4-base-de-datos-supabase)
 - [5. Librerías base](#5-librerías-base)
-- [6. Middleware de autenticación](#6-middleware-de-autenticación)
+- [6. proxy.ts — Autenticación (Next.js 16)](#6-proxysts--autenticación-nextjs-16)
 - [7. CartContext](#7-cartcontext)
-- [8. API Routes](#8-api-routes)
+- [8. API Routes + Server Actions](#8-api-routes--server-actions)
 - [9. Páginas y componentes](#9-páginas-y-componentes)
 - [10. Orden de ejecución](#10-orden-de-ejecución)
 - [11. Criterios de aceptación](#11-criterios-de-aceptación)
@@ -53,7 +53,7 @@ Cuando se use `next/image` con imágenes de producto, siempre con `unoptimized={
 Siempre enteros en CLP. Sin decimales en ninguna capa. No usar `parseFloat` para dinero.
 
 #### Claves secretas
-`SUPABASE_SERVICE_ROLE_KEY` y `MP_ACCESS_TOKEN` nunca se importan en archivos que contengan `"use client"` ni en archivos bajo `app/(store)/`. Solo en Route Handlers y Server Actions.
+`SUPABASE_SERVICE_ROLE_KEY` y `MP_ACCESS_TOKEN` nunca se importan en archivos que contengan `"use client"` ni en archivos bajo `app/(store)/`. Solo en Route Handlers (`app/api/`) y Server Actions (`lib/actions/`).
 
 #### Webhook
 Siempre retorna HTTP 200, incluso si hay error interno. Los errores se loguean con `console.error` pero no se propagan como respuesta.
@@ -96,8 +96,6 @@ Siempre retorna HTTP 200, incluso si hay error interno. Los errores se loguean c
 │   │   └── login/
 │   │       └── page.tsx
 │   └── api/
-│       ├── checkout/
-│       │   └── route.ts
 │       └── webhooks/
 │           └── mercadopago/
 │               └── route.ts
@@ -124,6 +122,8 @@ Siempre retorna HTTP 200, incluso si hay error interno. Los errores se loguean c
 ├── context/
 │   └── CartContext.tsx
 ├── lib/
+│   ├── actions/
+│   │   └── checkout.ts
 │   ├── supabase/
 │   │   ├── client.ts
 │   │   └── server.ts
@@ -135,7 +135,7 @@ Siempre retorna HTTP 200, incluso si hay error interno. Los errores se loguean c
 │   └── index.ts
 ├── emails/
 │   └── OrderConfirmation.tsx
-├── middleware.ts
+├── proxy.ts
 └── docs/
     └── SPEC.md
 ```
@@ -456,13 +456,15 @@ export function createClient() {
 
 ### `lib/supabase/server.ts`
 
+En Next.js 16, `cookies()` es asíncrono y requiere `await`.
+
 ```typescript
 import { createServerClient as createSupabaseServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 // Cliente con publishable key — para lectura en Server Components
-export function createServerClient() {
-  const cookieStore = cookies()
+export async function createServerClient() {
+  const cookieStore = await cookies()
   return createSupabaseServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -474,10 +476,44 @@ export function createServerClient() {
 export function createAdminClient() {
   return createSupabaseServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,  // service_role bypasses RLS
     { cookies: { getAll: () => [] } }
   )
 }
+```
+
+### `lib/actions/checkout.ts` — Server Action
+
+Las Server Actions viven en `lib/actions/`. Cada archivo exporta funciones con `"use server"` que reciben `formData` y un `prevState` opcional para `useActionState`.
+
+Patrón general:
+
+```typescript
+'use server'
+
+import { z } from 'zod'
+
+const schema = z.object({ /* ... */ })
+
+export async function someAction(
+  prevState: { error?: string; success?: boolean } | null,
+  formData: FormData
+) {
+  const parsed = schema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return { error: 'Datos inválidos' }
+  // ... lógica server ...
+  return { success: true }
+}
+```
+
+El cliente lo consume con `useActionState`:
+
+```typescript
+'use client'
+import { useActionState } from 'react'
+import { someAction } from '@/lib/actions/someAction'
+
+const [state, formAction, pending] = useActionState(someAction, null)
 ```
 
 ### `lib/images.ts`
@@ -523,15 +559,44 @@ Server-side only. Envía emails de confirmación usando React Email templates.
 
 ---
 
-## 6. Middleware de autenticación
+## 6. proxy.ts — Autenticación (Next.js 16)
 
-`middleware.ts` protege todas las rutas bajo `/admin/*` (excepto `/admin/login`).
+Next.js 16 renombró `middleware.ts` a `proxy.ts`. El archivo se coloca en la raíz del proyecto y exporta una función `proxy()` con la misma API que el antiguo `middleware()`.
+
+`proxy.ts` protege todas las rutas bajo `/admin/*` (excepto `/admin/login`).
 
 Verifica:
 1. Sesión activa de Supabase Auth
 2. `app_metadata.role === 'admin'`
 
 Si no cumple, redirige a `/admin/login`.
+
+### Referencia — `proxy.ts`
+
+```typescript
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  if (!pathname.startsWith('/admin') || pathname === '/admin/login') {
+    return NextResponse.next()
+  }
+
+  const response = NextResponse.next()
+  const supabase = createServerClient(/* ... */)
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return NextResponse.redirect(new URL('/admin/login', request.url))
+  if (user.app_metadata?.role !== 'admin')
+    return NextResponse.redirect(new URL('/', request.url))
+
+  return response
+}
+
+export const config = { matcher: ['/admin/:path*'] }
+```
 
 ---
 
@@ -551,12 +616,35 @@ Clave de storage: `cart_v1`
 
 ---
 
-## 8. API Routes
+## 8. API Routes + Server Actions
 
-### `POST /api/checkout`
+### `lib/actions/checkout.ts` — Server Action (Next.js 16)
+
+Next.js 16 favorece Server Actions sobre Route Handlers para operaciones de escritura. El checkout se implementa como una Server Action con `"use server"`.
+
+**Patrón Server Action con `useActionState`:**
+
+```typescript
+'use server'
+
+import { createAdminClient } from '@/lib/supabase/server'
+import { createPreference } from '@/lib/mercadopago'
+import type { CheckoutPayload, CheckoutResponse } from '@/types'
+
+export async function checkoutAction(
+  prevState: CheckoutResponse | null,
+  formData: FormData
+): Promise<CheckoutResponse> {
+  const payload: CheckoutPayload = {
+    items: JSON.parse(formData.get('items') as string),
+    customer: JSON.parse(formData.get('customer') as string),
+  }
+  // ... mismo flujo que el antiguo Route Handler ...
+}
+```
 
 Flujo:
-1. Validar payload (`CheckoutPayload`)
+1. Validar payload (`CheckoutPayload`) con Zod
 2. Leer variantes desde Supabase con stock
 3. Verificar stock suficiente
 4. Crear orden en `orders` con status `pending`
@@ -565,7 +653,7 @@ Flujo:
 7. Guardar `mp_preference_id` en la orden
 8. Retornar `{ preferenceId, initPoint }`
 
-### `POST /api/webhooks/mercadopago`
+### `POST /api/webhooks/mercadopago` — Route Handler
 
 Flujo:
 1. Recibir notificación de MercadoPago
@@ -587,7 +675,7 @@ Flujo:
 | `/productos` | Catálogo | Server | Todos los productos activos |
 | `/producto/[slug]` | Detalle | Server + Client | Galería, variantes, add to cart |
 | `/carrito` | Carrito | Client | Items del carrito |
-| `/checkout` | Checkout | Client | Formulario + pago MP |
+| `/checkout` | Checkout | Client | `useActionState` + Server Action → MP redirect |
 | `/checkout/resultado` | Resultado | Client | Post-pago (éxito/error) |
 
 ### Admin (protegido)
@@ -596,11 +684,11 @@ Flujo:
 |------|-----------|-------------|
 | `/admin` | Dashboard | Stats: pedidos del día, ventas mes, pendientes, stock bajo |
 | `/admin/productos` | Lista | Tabla de productos con toggle activo |
-| `/admin/productos/nuevo` | Form | Crear producto + variantes + imágenes |
-| `/admin/productos/[id]` | Form | Editar producto |
+| `/admin/productos/nuevo` | Form | `useActionState` + Server Action, Zod validation |
+| `/admin/productos/[id]` | Form | `useActionState` + Server Action, Zod validation |
 | `/admin/pedidos` | Lista | Tabla de pedidos con filtro por estado |
 | `/admin/pedidos/[id]` | Detalle | Info cliente, items, cambiar estado |
-| `/admin/login` | Login | Autenticación admin |
+| `/admin/login` | Login | Autenticación admin — protegido por `proxy.ts` |
 
 ### Componentes base (UI)
 
@@ -616,9 +704,9 @@ graph TD
     B --> C[Librerías base]
     C --> D[DB: Migraciones SQL]
     D --> E[Context: CartContext]
-    E --> F[Middleware Auth]
+    E --> F[proxy.ts Auth]
     F --> G[UI Base Components]
-    G --> H[API: Checkout + Webhook]
+    G --> H[Server Action: Checkout + Webhook]
     H --> I[Store Components]
     I --> J[Store Pages]
     J --> K[Admin Pages]
@@ -641,9 +729,9 @@ Orden detallado:
 | 7 | DB | Migraciones: tablas → RLS → Storage → función RPC |
 | 8 | DB | Crear usuario admin |
 | 9 | CONTEXT | Implementar `CartContext.tsx` |
-| 10 | MIDDLEWARE | Implementar `middleware.ts` |
+| 10 | PROXY | Implementar `proxy.ts` (Next.js 16 reemplaza middleware.ts) |
 | 11 | UI BASE | Componentes `ui/` (Button, Input, Select, Badge, Dialog) |
-| 12 | API | Implementar `/api/checkout` |
+| 12 | SERVER ACTION | Implementar `lib/actions/checkout.ts` con `"use server"` |
 | 13 | API | Implementar `/api/webhooks/mercadopago` |
 | 14 | STORE | ProductCard, ProductGallery, VariantSelector |
 | 15 | STORE | AddToCartButton, CartDrawer, CartItem |

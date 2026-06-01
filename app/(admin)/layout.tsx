@@ -17,12 +17,12 @@ function AdminSidebar() {
   const router = useRouter()
 
   // No mostrar sidebar en login
-  if (pathname === '/admin/login') return null
+  if (pathname === '/login') return null
 
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/admin/login')
+    router.push('/login')
     router.refresh()
   }
 
@@ -76,7 +76,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
 
   // Login page layout simple
-  if (pathname === '/admin/login') {
+  if (pathname === '/login') {
     return <>{children}</>
   }
 

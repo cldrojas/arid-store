@@ -1,11 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Solo aplica a rutas de admin (excepto login)
-  if (!pathname.startsWith('/admin') || pathname === '/admin/login') {
+  if (!pathname.startsWith('/admin') || pathname === '/login') {
     return NextResponse.next()
   }
 
@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.redirect(new URL('/admin/login', request.url))
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   const role = user.app_metadata?.role
