@@ -64,8 +64,8 @@ export type ShippingAddress = {
 export type Order = {
   id: string
   status: OrderStatus
-  mp_preference_id: string | null
-  mp_payment_id: string | null
+  payment_session_id: string | null  // was mp_preference_id
+  payment_intent_id: string | null   // was mp_payment_id
   total_amount: number
   customer_email: string
   customer_name: string
@@ -101,6 +101,6 @@ export type CheckoutPayload = {
 }
 
 export type CheckoutResponse =
-  | { preferenceId: string; initPoint: string }
+  | { redirectUrl: string }
   | { error: 'INSUFFICIENT_STOCK'; failedItems: string[] }
   | { error: 'VALIDATION_ERROR'; message: string }

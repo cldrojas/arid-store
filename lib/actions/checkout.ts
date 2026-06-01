@@ -1,19 +1,19 @@
-import { NextResponse } from 'next/server'
+'use server'
+
 import { createAdminClient } from '@/lib/supabase/server'
-import { createPreference } from '@/lib/mercadopago'
+import { createCheckoutSession } from '@/lib/fintoc'
 import type { CheckoutPayload, CheckoutResponse } from '@/types'
 
-export async function POST(req: Request): Promise<NextResponse<CheckoutResponse>> {
+export async function checkoutAction(
+  _prevState: CheckoutResponse | null,
+  payload: CheckoutPayload
+): Promise<CheckoutResponse> {
   try {
-    const body: CheckoutPayload = await req.json()
-    const { items, customer } = body
+    const { items, customer } = payload
 
     // 1. Validación básica
     if (!items?.length || !customer?.email || !customer?.name) {
-      return NextResponse.json(
-        { error: 'VALIDATION_ERROR', message: 'Datos incompletos' },
-        { status: 400 }
-      )
+      return { error: 'VALIDATION_ERROR', message: 'Datos incompletos' }
     }
 
     const supabase = createAdminClient()
@@ -26,10 +26,7 @@ export async function POST(req: Request): Promise<NextResponse<CheckoutResponse>
       .in('id', variantIds)
 
     if (variantsError || !variants) {
-      return NextResponse.json(
-        { error: 'VALIDATION_ERROR', message: 'Error al verificar productos' },
-        { status: 500 }
-      )
+      return { error: 'VALIDATION_ERROR', message: 'Error al verificar productos' }
     }
 
     // 3. Verificar que todos los variants existen y tienen stock
@@ -72,10 +69,7 @@ export async function POST(req: Request): Promise<NextResponse<CheckoutResponse>
     }
 
     if (failedItems.length > 0) {
-      return NextResponse.json(
-        { error: 'INSUFFICIENT_STOCK', failedItems },
-        { status: 409 }
-      )
+      return { error: 'INSUFFICIENT_STOCK', failedItems }
     }
 
     const totalAmount = enrichedItems.reduce(
@@ -98,10 +92,7 @@ export async function POST(req: Request): Promise<NextResponse<CheckoutResponse>
       .single()
 
     if (orderError || !order) {
-      return NextResponse.json(
-        { error: 'VALIDATION_ERROR', message: 'Error al crear la orden' },
-        { status: 500 }
-      )
+      return { error: 'VALIDATION_ERROR', message: 'Error al crear la orden' }
     }
 
     // 5. Insertar order_items
@@ -116,36 +107,23 @@ export async function POST(req: Request): Promise<NextResponse<CheckoutResponse>
       }))
     )
 
-    // 6. Crear preferencia en MercadoPago
-    const preference = await createPreference({
+    // 6. Crear checkout session en Fintoc
+    const session = await createCheckoutSession({
       orderId: order.id,
-      items: enrichedItems.map(i => ({
-        title: i.title,
-        unit_price: i.unit_price,
-        quantity: i.quantity
-      })),
-      payer: {
-        name: customer.name,
-        email: customer.email
-      }
+      amount: totalAmount,
+      customerEmail: customer.email
     })
 
-    // 7. Guardar preference_id en la orden
+    // 7. Guardar payment_session_id en la orden
     await supabase
       .from('orders')
-      .update({ mp_preference_id: preference.id })
+      .update({ payment_session_id: session.sessionId })
       .eq('id', order.id)
 
-    return NextResponse.json({
-      preferenceId: preference.id!,
-      initPoint: preference.init_point!
-    })
+    return { redirectUrl: session.redirectUrl }
 
   } catch (error) {
-    console.error('[Checkout API]', error)
-    return NextResponse.json(
-      { error: 'VALIDATION_ERROR', message: 'Error interno del servidor' },
-      { status: 500 }
-    )
+    console.error('[Checkout Action]', error)
+    return { error: 'VALIDATION_ERROR', message: 'Error interno del servidor' }
   }
 }

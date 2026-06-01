@@ -1,17 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useActionState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { formatCLP } from '@/lib/utils'
 import { CheckoutForm } from '@/components/store/CheckoutForm'
-import type { ShippingAddress, CheckoutResponse } from '@/types'
+import { checkoutAction } from '@/lib/actions/checkout'
+import type { ShippingAddress, CheckoutResponse, CheckoutPayload } from '@/types'
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, total } = useCart()
   const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [state, dispatch, isPending] = useActionState(checkoutAction, null)
 
   // Redirigir si carrito vacío
   useEffect(() => {
@@ -19,6 +20,21 @@ export default function CheckoutPage() {
       router.replace('/carrito')
     }
   }, [items.length, router])
+
+  // Manejar resultado de la Server Action
+  useEffect(() => {
+    if (!state) return
+
+    if ('redirectUrl' in state) {
+      window.location.href = state.redirectUrl
+    } else if (state.error === 'INSUFFICIENT_STOCK' && 'failedItems' in state) {
+      setError(
+        `Stock insuficiente para algunos productos: ${state.failedItems.join(', ')}`
+      )
+    } else if (state.error === 'VALIDATION_ERROR') {
+      setError(state.message ?? 'Error al procesar el pedido')
+    }
+  }, [state])
 
   if (items.length === 0) {
     return null // Redirigiendo...
@@ -31,53 +47,21 @@ export default function CheckoutPage() {
     address: ShippingAddress
   }) {
     setError(null)
-    setIsSubmitting(true)
 
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: items.map(i => ({
-            variantId: i.variantId,
-            quantity: i.quantity
-          })),
-          customer: {
-            name: data.name,
-            email: data.email,
-            phone: data.phone,
-            address: data.address
-          }
-        })
-      })
-
-      const result: CheckoutResponse = await res.json()
-
-      if (res.status === 409 && 'error' in result && result.error === 'INSUFFICIENT_STOCK') {
-        setError(
-          `Stock insuficiente para algunos productos: ${
-            (result as Extract<CheckoutResponse, { error: 'INSUFFICIENT_STOCK' }>).failedItems.join(', ')
-          }`
-        )
-        return
+    const payload: CheckoutPayload = {
+      items: items.map(i => ({
+        variantId: i.variantId,
+        quantity: i.quantity
+      })),
+      customer: {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        address: data.address
       }
-
-      if (!res.ok) {
-        setError(
-          (result as Extract<CheckoutResponse, { error: 'VALIDATION_ERROR' }>).message ??
-          'Error al procesar el pedido'
-        )
-        return
-      }
-
-      const { initPoint } = result as Extract<CheckoutResponse, { initPoint: string }>
-      // Redirigir a MercadoPago
-      window.location.href = initPoint
-    } catch {
-      setError('Error de conexión. Intenta nuevamente.')
-    } finally {
-      setIsSubmitting(false)
     }
+
+    dispatch(payload)
   }
 
   return (
@@ -93,7 +77,7 @@ export default function CheckoutPage() {
       <div className="mt-8 grid gap-8 md:grid-cols-5">
         {/* Formulario */}
         <div className="md:col-span-3">
-          <CheckoutForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+          <CheckoutForm onSubmit={handleSubmit} isSubmitting={isPending} />
         </div>
 
         {/* Resumen */}
