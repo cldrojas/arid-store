@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Cuerpo de la polera (outline) -->
+  <path d="M60 180 L40 95 L50 40 L100 20 L150 40 L160 95 L140 180Z" 
+        stroke="#d4d4d4" stroke-width="2" fill="none" stroke-linejoin="round"/>
+  <!-- Mangas -->
+  <path d="M50 40 L20 60 L25 85 L40 90" 
+        stroke="#d4d4d4" stroke-width="2" fill="none" stroke-linejoin="round"/>
+  <path d="M150 40 L180 60 L175 85 L160 90" 
+        stroke="#d4d4d4" stroke-width="2" fill="none" stroke-linejoin="round"/>
+  <!-- Cuello -->
+  <path d="M75 22 Q100 10 125 22" 
+        stroke="#d4d4d4" stroke-width="2" fill="none" stroke-linejoin="round"/>
+  <!-- Lineas internas (skeleton) -->
+  <line x1="100" y1="20" x2="100" y2="180" stroke="#e5e5e5" stroke-width="1" stroke-dasharray="4 3"/>
+  <line x1="70" y1="60" x2="130" y2="60" stroke="#e5e5e5" stroke-width="1" stroke-dasharray="4 3"/>
+  <line x1="65" y1="90" x2="135" y2="90" stroke="#e5e5e5" stroke-width="1" stroke-dasharray="4 3"/>
+  <line x1="60" y1="120" x2="140" y2="120" stroke="#e5e5e5" stroke-width="1" stroke-dasharray="4 3"/>
+  <line x1="75" y1="160" x2="125" y2="160" stroke="#e5e5e5" stroke-width="1" stroke-dasharray="4 3"/>
+  <!-- Trazos diagonales de skeleton -->
+  <line x1="70" y1="30" x2="55" y2="50" stroke="#f0f0f0" stroke-width="1"/>
+  <line x1="130" y1="30" x2="145" y2="50" stroke="#f0f0f0" stroke-width="1"/>
+</svg>

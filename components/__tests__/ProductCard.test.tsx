@@ -48,19 +48,22 @@ describe('ProductCard', () => {
     expect(img!.getAttribute('src')).toContain('products/img-2.jpg')
   })
 
-  it('shows "Sin imagen" when images array is empty', () => {
+  it('shows shirt skeleton when images array is empty', () => {
     const product = { ...baseProduct, images: [] }
 
     render(<ProductCard product={product} />)
 
-    expect(screen.getByText('Sin imagen')).toBeInTheDocument()
-    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    const img = screen.getByRole('img')
+    expect(img).toBeInTheDocument()
+    expect(img).toHaveAttribute('src', '/shirt-skeleton.svg')
   })
 
-  it('shows "Sin imagen" when images prop is undefined', () => {
+  it('shows shirt skeleton when images prop is undefined', () => {
     render(<ProductCard product={baseProduct} />)
 
-    expect(screen.getByText('Sin imagen')).toBeInTheDocument()
+    const img = screen.getByRole('img')
+    expect(img).toBeInTheDocument()
+    expect(img).toHaveAttribute('src', '/shirt-skeleton.svg')
   })
 
   it('links to /producto/{slug}', () => {
