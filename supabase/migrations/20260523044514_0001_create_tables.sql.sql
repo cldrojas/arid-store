@@ -13,7 +13,6 @@ CREATE TABLE products (
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- product_variants
 CREATE TABLE product_variants (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -26,7 +25,6 @@ CREATE TABLE product_variants (
   price_override INTEGER CHECK (price_override > 0),
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- product_images
 CREATE TABLE product_images (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -37,7 +35,6 @@ CREATE TABLE product_images (
   sort_order   INTEGER DEFAULT 0,
   is_primary   BOOLEAN DEFAULT false
 );
-
 -- orders
 CREATE TABLE orders (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -54,7 +51,6 @@ CREATE TABLE orders (
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- order_items
 CREATE TABLE order_items (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -65,17 +61,14 @@ CREATE TABLE order_items (
   unit_price   INTEGER NOT NULL CHECK (unit_price > 0),
   quantity     INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0)
 );
-
 -- trigger: updated_at automático
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER products_updated_at
   BEFORE UPDATE ON products
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
 CREATE TRIGGER orders_updated_at
   BEFORE UPDATE ON orders
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

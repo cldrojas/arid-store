@@ -14,7 +14,6 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null)
   const [state, dispatch, isPending] = useActionState(checkoutAction, null)
 
-  // Redirigir si carrito vacío
   useEffect(() => {
     if (items.length === 0) {
       router.replace('/carrito')
@@ -68,19 +67,11 @@ export default function CheckoutPage() {
     <div className="mx-auto max-w-4xl px-4 py-8">
       <h1 className="text-2xl font-bold text-neutral-900">Checkout</h1>
 
-      {error && (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
       <div className="mt-8 grid gap-8 md:grid-cols-5">
-        {/* Formulario */}
         <div className="md:col-span-3">
           <CheckoutForm onSubmit={handleSubmit} isSubmitting={isPending} />
         </div>
 
-        {/* Resumen */}
         <div className="md:col-span-2">
           <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-5">
             <h3 className="text-sm font-semibold text-neutral-900">
@@ -105,9 +96,7 @@ export default function CheckoutPage() {
               ))}
             </div>
             <div className="mt-4 flex items-center justify-between border-t border-neutral-200 pt-4">
-              <span className="text-sm font-semibold text-neutral-900">
-                Total
-              </span>
+              <span className="text-sm font-semibold text-neutral-900">Total</span>
               <span className="text-lg font-bold text-neutral-900">
                 {formatCLP(total)}
               </span>

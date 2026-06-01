@@ -20,7 +20,7 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-b from-neutral-50 to-white py-24 md:py-32">
+      <section className="bg-linear-to-b from-neutral-50 to-white py-24 md:py-32">
         <div className="mx-auto max-w-6xl px-4 text-center">
           <h1 className="text-4xl font-bold tracking-tight text-neutral-900 md:text-5xl">
             Poleras con diseño

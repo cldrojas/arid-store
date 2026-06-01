@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
+import { useCart } from '@/context/CartContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -13,7 +14,7 @@ const CHILEAN_REGIONS = [
   'Los Ríos', 'Los Lagos', 'Aysén', 'Magallanes'
 ]
 
-type FormData = {
+type FormFields = {
   name: string
   email: string
   phone: string
@@ -24,7 +25,7 @@ type FormData = {
   notes: string
 }
 
-type FormErrors = Partial<Record<keyof FormData, string>>
+type FormErrors = Partial<Record<keyof FormFields, string>>
 
 type CheckoutFormProps = {
   onSubmit: (data: {
@@ -32,12 +33,13 @@ type CheckoutFormProps = {
     email: string
     phone: string
     address: ShippingAddress
-  }) => Promise<void>
+  }) => void
   isSubmitting: boolean
 }
 
 export function CheckoutForm({ onSubmit, isSubmitting }: CheckoutFormProps) {
-  const [form, setForm] = useState<FormData>({
+  const { items } = useCart()
+  const [form, setForm] = useState<FormFields>({
     name: '',
     email: '',
     phone: '',
@@ -63,22 +65,16 @@ export function CheckoutForm({ onSubmit, isSubmitting }: CheckoutFormProps) {
     return errs
   }
 
-  function handleChange(field: keyof FormData, value: string) {
-    setForm(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }))
-    }
-  }
-
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
     const errs = validate()
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
       return
     }
 
-    await onSubmit({
+    onSubmit({
       name: form.name.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
@@ -90,6 +86,13 @@ export function CheckoutForm({ onSubmit, isSubmitting }: CheckoutFormProps) {
         notes: form.notes.trim() || null
       }
     })
+  }
+
+  function handleChange(field: keyof FormFields, value: string) {
+    setForm(prev => ({ ...prev, [field]: value }))
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }))
+    }
   }
 
   return (
@@ -168,7 +171,7 @@ export function CheckoutForm({ onSubmit, isSubmitting }: CheckoutFormProps) {
         />
       </div>
 
-      <Button type="submit" disabled={isSubmitting} className="w-full" size="lg">
+      <Button type="submit" disabled={isSubmitting || items.length === 0} className="w-full" size="lg">
         {isSubmitting ? 'Procesando...' : 'Ir a pagar'}
       </Button>
     </form>

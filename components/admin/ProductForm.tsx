@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
+import { useActionState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import type { ProductVariant, ProductImage } from '@/types'
+import { createProduct, updateProduct, type ProductFormState } from '@/lib/actions/products'
 
 type VariantInput = {
   id?: string
@@ -25,6 +27,7 @@ type ImageInput = {
 
 type ProductFormProps = {
   initialData?: {
+    id: string
     name: string
     slug: string
     description: string
@@ -33,16 +36,6 @@ type ProductFormProps = {
     variants: VariantInput[]
     images: ImageInput[]
   }
-  onSubmit: (data: {
-    name: string
-    slug: string
-    description: string
-    base_price: number
-    is_active: boolean
-    variants: VariantInput[]
-    images: ImageInput[]
-  }) => Promise<void>
-  isSubmitting: boolean
 }
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
@@ -55,7 +48,10 @@ function emptyImage(): ImageInput {
   return { storage_path: '', alt_text: '', is_primary: false, sort_order: 0 }
 }
 
-export function ProductForm({ initialData, onSubmit, isSubmitting }: ProductFormProps) {
+export function ProductForm({ initialData }: ProductFormProps) {
+  const router = useRouter()
+  const isEdit = !!initialData
+
   const [name, setName] = useState(initialData?.name ?? '')
   const [slug, setSlug] = useState(initialData?.slug ?? '')
   const [description, setDescription] = useState(initialData?.description ?? '')
@@ -69,16 +65,48 @@ export function ProductForm({ initialData, onSubmit, isSubmitting }: ProductForm
     initialData?.images ?? []
   )
 
-  const [error, setError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
+
+  async function handleSubmit(_prevState: ProductFormState, formData: FormData): Promise<ProductFormState> {
+    setValidationError(null)
+
+    if (!name.trim()) { setValidationError('Nombre requerido'); return { error: 'Nombre requerido' } }
+    if (!slug.trim()) { setValidationError('Slug requerido'); return { error: 'Slug requerido' } }
+    if (!basePrice || Number(basePrice) <= 0) { setValidationError('Precio base inválido'); return { error: 'Precio base inválido' } }
+
+    const data = {
+      ...(isEdit ? { id: initialData!.id } : {}),
+      name: name.trim(),
+      slug: slug.trim(),
+      description: description.trim(),
+      base_price: Number(basePrice),
+      is_active: isActive,
+      variants,
+      images
+    }
+
+    const payload = new FormData()
+    payload.set('data', JSON.stringify(data))
+
+    const action = isEdit ? updateProduct : createProduct
+    const result = await action(_prevState, payload)
+
+    if (result.success) {
+      router.push('/admin/productos')
+      router.refresh()
+    }
+
+    return result
+  }
+
+  const [state, formAction, isPending] = useActionState(handleSubmit, {} as ProductFormState)
 
   function addVariant() {
     setVariants(prev => [...prev, emptyVariant()])
   }
 
   function updateVariant(index: number, field: keyof VariantInput, value: string | number) {
-    setVariants(prev =>
-      prev.map((v, i) => (i === index ? { ...v, [field]: value } : v))
-    )
+    setVariants(prev => prev.map((v, i) => (i === index ? { ...v, [field]: value } : v)))
   }
 
   function removeVariant(index: number) {
@@ -90,39 +118,18 @@ export function ProductForm({ initialData, onSubmit, isSubmitting }: ProductForm
   }
 
   function updateImage(index: number, field: keyof ImageInput, value: string | number | boolean) {
-    setImages(prev =>
-      prev.map((img, i) => (i === index ? { ...img, [field]: value } : img))
-    )
+    setImages(prev => prev.map((img, i) => (i === index ? { ...img, [field]: value } : img)))
   }
 
   function removeImage(index: number) {
     setImages(prev => prev.filter((_, i) => i !== index))
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-
-    if (!name.trim()) { setError('Nombre requerido'); return }
-    if (!slug.trim()) { setError('Slug requerido'); return }
-    if (!basePrice || Number(basePrice) <= 0) { setError('Precio base inválido'); return }
-
-    await onSubmit({
-      name: name.trim(),
-      slug: slug.trim(),
-      description: description.trim(),
-      base_price: Number(basePrice),
-      is_active: isActive,
-      variants,
-      images
-    })
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      {error && (
+    <form action={formAction} className="space-y-8">
+      {(validationError || state?.error) && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
+          {validationError ?? state!.error}
         </div>
       )}
 
@@ -177,10 +184,7 @@ export function ProductForm({ initialData, onSubmit, isSubmitting }: ProductForm
         </div>
 
         {variants.map((v, i) => (
-          <div
-            key={i}
-            className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-200 p-4"
-          >
+          <div key={i} className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-200 p-4">
             <div>
               <label className="text-xs font-medium text-neutral-500">Talla</label>
               <select
@@ -193,44 +197,12 @@ export function ProductForm({ initialData, onSubmit, isSubmitting }: ProductForm
                 ))}
               </select>
             </div>
-            <Input
-              label="Color"
-              value={v.color}
-              onChange={e => updateVariant(i, 'color', e.target.value)}
-            />
-            <Input
-              label="Hex"
-              value={v.color_hex}
-              onChange={e => updateVariant(i, 'color_hex', e.target.value)}
-              className="w-24"
-            />
-            <Input
-              label="Stock"
-              type="number"
-              value={String(v.stock)}
-              onChange={e => updateVariant(i, 'stock', Number(e.target.value))}
-              className="w-24"
-            />
-            <Input
-              label="SKU"
-              value={v.sku}
-              onChange={e => updateVariant(i, 'sku', e.target.value)}
-              className="w-28"
-            />
-            <Input
-              label="Precio (opcional)"
-              type="number"
-              value={v.price_override}
-              onChange={e => updateVariant(i, 'price_override', e.target.value)}
-              className="w-28"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => removeVariant(i)}
-              className="text-red-500"
-            >
+            <Input label="Color" value={v.color} onChange={e => updateVariant(i, 'color', e.target.value)} />
+            <Input label="Hex" value={v.color_hex} onChange={e => updateVariant(i, 'color_hex', e.target.value)} className="w-24" />
+            <Input label="Stock" type="number" value={String(v.stock)} onChange={e => updateVariant(i, 'stock', Number(e.target.value))} className="w-24" />
+            <Input label="SKU" value={v.sku} onChange={e => updateVariant(i, 'sku', e.target.value)} className="w-28" />
+            <Input label="Precio (opcional)" type="number" value={v.price_override} onChange={e => updateVariant(i, 'price_override', e.target.value)} className="w-28" />
+            <Button type="button" variant="ghost" size="sm" onClick={() => removeVariant(i)} className="text-red-500">
               Eliminar
             </Button>
           </div>
@@ -247,28 +219,10 @@ export function ProductForm({ initialData, onSubmit, isSubmitting }: ProductForm
         </div>
 
         {images.map((img, i) => (
-          <div
-            key={i}
-            className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-200 p-4"
-          >
-            <Input
-              label="Storage path"
-              value={img.storage_path}
-              onChange={e => updateImage(i, 'storage_path', e.target.value)}
-              className="min-w-[200px]"
-            />
-            <Input
-              label="Alt text"
-              value={img.alt_text}
-              onChange={e => updateImage(i, 'alt_text', e.target.value)}
-            />
-            <Input
-              label="Orden"
-              type="number"
-              value={String(img.sort_order)}
-              onChange={e => updateImage(i, 'sort_order', Number(e.target.value))}
-              className="w-20"
-            />
+          <div key={i} className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-200 p-4">
+            <Input label="Storage path" value={img.storage_path} onChange={e => updateImage(i, 'storage_path', e.target.value)} className="min-w-[200px]" />
+            <Input label="Alt text" value={img.alt_text} onChange={e => updateImage(i, 'alt_text', e.target.value)} />
+            <Input label="Orden" type="number" value={String(img.sort_order)} onChange={e => updateImage(i, 'sort_order', Number(e.target.value))} className="w-20" />
             <label className="flex items-center gap-2 pb-2">
               <input
                 type="checkbox"
@@ -278,22 +232,14 @@ export function ProductForm({ initialData, onSubmit, isSubmitting }: ProductForm
               />
               <span className="text-xs text-neutral-600">Principal</span>
             </label>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => removeImage(i)}
-              className="text-red-500"
-            >
-              Eliminar
-            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => removeImage(i)} className="text-red-500">Eliminar</Button>
           </div>
         ))}
       </section>
 
       <div className="flex gap-3">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Guardando...' : initialData ? 'Actualizar producto' : 'Crear producto'}
+        <Button type="submit" disabled={isPending}>
+          {isPending ? 'Guardando...' : isEdit ? 'Actualizar producto' : 'Crear producto'}
         </Button>
       </div>
     </form>
