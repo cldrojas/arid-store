@@ -67,7 +67,7 @@ function mockVariants() {
       product_id: 'product-1',
       size: 'M' as const,
       color: 'Negro',
-      products: [{ name: 'Polera Clásica', base_price: 15000 }]
+      products: { name: 'Polera Clásica', base_price: 15000 }
     },
     {
       id: 'variant-2',
@@ -76,7 +76,7 @@ function mockVariants() {
       product_id: 'product-2',
       size: 'L' as const,
       color: 'Blanco',
-      products: [{ name: 'Polera Premium', base_price: 18000 }]
+      products: { name: 'Polera Premium', base_price: 18000 }
     }
   ]
 }

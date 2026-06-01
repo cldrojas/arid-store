@@ -52,7 +52,7 @@ export async function checkoutAction(
         continue
       }
 
-      const product = (variant.products as Array<{ name: string; base_price: number }>)[0]
+      const product = variant.products as unknown as { name: string; base_price: number } | null
       if (!product) {
         failedItems.push(item.variantId)
         continue
