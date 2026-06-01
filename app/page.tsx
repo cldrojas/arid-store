@@ -1,65 +1,91 @@
-import Image from 'next/image'
+import Link from 'next/link'
+import { createServerClient } from '@/lib/supabase/server'
 
-export default function Home() {
+export const revalidate = 60
+
+export default async function Home() {
+  const supabase = await createServerClient()
+
+  const { data: products } = await supabase
+    .from('products')
+    .select(`
+      id, slug, name, base_price,
+      images:product_images(storage_path, is_primary, sort_order)
+    `)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(4)
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="flex flex-col flex-1">
+      {/* Header */}
+      <header className="border-b border-neutral-200 bg-white">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+          <span className="text-lg font-bold text-neutral-900">Arid Store</span>
+          <nav className="flex items-center gap-6">
+            <Link
+              href="/productos"
+              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              Productos
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="flex-1 bg-gradient-to-b from-neutral-50 to-white py-24 md:py-32">
+        <div className="mx-auto max-w-6xl px-4 text-center">
+          <h1 className="text-4xl font-bold tracking-tight text-neutral-900 md:text-5xl">
+            Poleras con diseño
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{' '}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{' '}
-            or the{' '}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{' '}
-            center.
+          <p className="mx-auto mt-4 max-w-lg text-lg text-neutral-600">
+            Descubre nuestra colección de poleras estampadas. Diseños exclusivos,
+            materiales de calidad, envío a todo Chile.
+          </p>
+          <Link
+            href="/productos"
+            className="mt-8 inline-flex items-center rounded-lg bg-neutral-900 px-6 py-3 text-sm font-medium text-white hover:bg-neutral-800 transition-colors"
+          >
+            Ver colección
+          </Link>
+        </div>
+      </section>
+
+      {/* Nuevos diseños */}
+      {products && products.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-16">
+          <h2 className="text-2xl font-bold text-neutral-900">
+            Nuevos diseños
+          </h2>
+          <div className="mt-8 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+            {products.map(product => (
+              <Link
+                key={product.id}
+                href={`/producto/${product.slug}`}
+                className="group rounded-lg border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-300"
+              >
+                <div className="aspect-square rounded-md bg-neutral-100" />
+                <h3 className="mt-3 text-sm font-medium text-neutral-900 group-hover:text-neutral-700 transition-colors">
+                  {product.name}
+                </h3>
+                <p className="mt-1 text-sm text-neutral-500">
+                  ${product.base_price.toLocaleString('es-CL')}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Footer */}
+      <footer className="border-t border-neutral-200 bg-neutral-50">
+        <div className="mx-auto max-w-6xl px-4 py-8">
+          <p className="text-center text-sm text-neutral-500">
+            &copy; {new Date().getFullYear()} Arid Store. Todos los derechos reservados.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-39.5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/8 px-5 transition-colors hover:border-transparent hover:bg-black/4 dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-39.5"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </footer>
     </div>
   )
 }
