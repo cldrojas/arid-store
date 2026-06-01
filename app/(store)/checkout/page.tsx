@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useActionState } from 'react'
+import { useEffect, useState, useActionState, startTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { formatCLP } from '@/lib/utils'
@@ -60,7 +60,9 @@ export default function CheckoutPage() {
       }
     }
 
-    dispatch(payload)
+    startTransition(() => {
+      dispatch(payload)
+    })
   }
 
   return (
