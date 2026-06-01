@@ -115,7 +115,8 @@ describe('checkoutAction', () => {
     expect(mockCreateCheckoutSession).toHaveBeenCalledWith({
       orderId: 'order-123',
       amount: 50000,
-      customerEmail: 'juan@ejemplo.com'
+      customerEmail: 'juan@ejemplo.com',
+      baseUrl: expect.any(String),
     })
 
     expect(supabaseChain.update).toHaveBeenCalledWith(

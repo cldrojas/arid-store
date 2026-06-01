@@ -1,5 +1,6 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/server'
 import { createCheckoutSession } from '@/lib/fintoc'
 import type { CheckoutPayload, CheckoutResponse } from '@/types'
@@ -107,14 +108,27 @@ export async function checkoutAction(
       }))
     )
 
-    // 6. Crear checkout session en Fintoc
+    // 6. Determinar base URL dinámicamente desde la request
+    // Fallback a NEXT_PUBLIC_BASE_URL para tests o entornos sin request scope
+    let baseUrl: string
+    try {
+      const h = await headers()
+      const proto = h.get('x-forwarded-proto') ?? 'https'
+      const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000'
+      baseUrl = `${proto}://${host}`
+    } catch {
+      baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+    }
+
+    // 7. Crear checkout session en Fintoc
     const session = await createCheckoutSession({
       orderId: order.id,
       amount: totalAmount,
-      customerEmail: customer.email
+      customerEmail: customer.email,
+      baseUrl,
     })
 
-    // 7. Guardar payment_session_id en la orden
+    // 8. Guardar payment_session_id en la orden
     await supabase
       .from('orders')
       .update({ payment_session_id: session.sessionId })

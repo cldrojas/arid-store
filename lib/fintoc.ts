@@ -8,14 +8,17 @@ type CreateCheckoutSessionInput = {
   orderId: string
   amount: number     // CLP entero
   customerEmail: string
+  baseUrl: string    // Origen dinámico (protocol + host)
 }
 
 export async function createCheckoutSession(input: CreateCheckoutSessionInput) {
+  const baseUrl = input.baseUrl.replace(/\/$/, '')
+
   const session = await fintoc.checkoutSessions.create({
     amount: input.amount,
     currency: 'CLP',
-    success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resultado?status=approved`,
-    cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resultado?status=rejected`,
+    success_url: `${baseUrl}/checkout/resultado?status=approved`,
+    cancel_url: `${baseUrl}/checkout/resultado?status=rejected`,
     customer_email: input.customerEmail,
     metadata: { order_id: input.orderId },
   })
