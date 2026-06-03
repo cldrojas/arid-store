@@ -32,9 +32,11 @@ export function ProductCard({ product }: ProductCardProps) {
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-neutral-400">
-            Sin imagen
-          </div>
+          <img
+            src="/shirt-skeleton.svg"
+            alt={product.name}
+            className="h-full w-full p-8 opacity-40 transition-opacity duration-300 group-hover:opacity-60"
+          />
         )}
       </div>
       <div className="mt-3 space-y-1">

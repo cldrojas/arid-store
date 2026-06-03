@@ -1,12 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useActionState } from 'react'
 import { useCart } from '@/context/CartContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { checkout, type CheckoutState } from '@/lib/actions/checkout'
+import type { ShippingAddress } from '@/types'
 
 const CHILEAN_REGIONS = [
   'Arica y Parinacota', 'Tarapacá', 'Antofagasta', 'Atacama',
@@ -28,8 +27,18 @@ type FormFields = {
 
 type FormErrors = Partial<Record<keyof FormFields, string>>
 
-export function CheckoutForm() {
-  const { items, clearCart } = useCart()
+type CheckoutFormProps = {
+  onSubmit: (data: {
+    name: string
+    email: string
+    phone: string
+    address: ShippingAddress
+  }) => void
+  isSubmitting: boolean
+}
+
+export function CheckoutForm({ onSubmit, isSubmitting }: CheckoutFormProps) {
+  const { items } = useCart()
   const [form, setForm] = useState<FormFields>({
     name: '',
     email: '',
@@ -41,43 +50,6 @@ export function CheckoutForm() {
     notes: ''
   })
   const [errors, setErrors] = useState<FormErrors>({})
-
-  async function handleCheckout(_prevState: CheckoutState, formData: FormData): Promise<CheckoutState> {
-    const errs = validate()
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs)
-      return { error: 'VALIDATION_ERROR' }
-    }
-
-    // Pasar datos estructurados como JSON en FormData
-    const payload = new FormData()
-    payload.set('items', JSON.stringify(
-      items.map(i => ({ variantId: i.variantId, quantity: i.quantity }))
-    ))
-    payload.set('customer', JSON.stringify({
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim() || undefined,
-      address: {
-        street: form.street.trim(),
-        city: form.city.trim(),
-        region: form.region,
-        zip: form.zip.trim() || null,
-        notes: form.notes.trim() || null
-      }
-    }))
-
-    const result = await checkout(_prevState, payload)
-
-    if (result.success && result.initPoint) {
-      clearCart()
-      window.location.href = result.initPoint
-    }
-
-    return result
-  }
-
-  const [state, formAction, isPending] = useActionState(handleCheckout, {} as CheckoutState)
 
   function validate(): FormErrors {
     const errs: FormErrors = {}
@@ -93,6 +65,29 @@ export function CheckoutForm() {
     return errs
   }
 
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+
+    const errs = validate()
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs)
+      return
+    }
+
+    onSubmit({
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      address: {
+        street: form.street.trim(),
+        city: form.city.trim(),
+        region: form.region,
+        zip: form.zip.trim() || null,
+        notes: form.notes.trim() || null
+      }
+    })
+  }
+
   function handleChange(field: keyof FormFields, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
@@ -101,15 +96,7 @@ export function CheckoutForm() {
   }
 
   return (
-    <form action={formAction} className="space-y-5">
-      {state?.error && state.error !== 'VALIDATION_ERROR' && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {state.error === 'STOCK_INSUFFICIENT'
-            ? `Stock insuficiente para algunos productos: ${state.failedItems?.join(', ')}`
-            : state.error}
-        </div>
-      )}
-
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-4">
         <h3 className="text-base font-semibold text-neutral-900">Datos del cliente</h3>
 
@@ -184,8 +171,8 @@ export function CheckoutForm() {
         />
       </div>
 
-      <Button type="submit" disabled={isPending} className="w-full" size="lg">
-        {isPending ? 'Procesando...' : 'Ir a pagar'}
+      <Button type="submit" disabled={isSubmitting || items.length === 0} className="w-full" size="lg">
+        {isSubmitting ? 'Procesando...' : 'Ir a pagar'}
       </Button>
     </form>
   )

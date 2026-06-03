@@ -1,14 +1,18 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState, useActionState, startTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { formatCLP } from '@/lib/utils'
 import { CheckoutForm } from '@/components/store/CheckoutForm'
+import { checkoutAction } from '@/lib/actions/checkout'
+import type { ShippingAddress, CheckoutResponse, CheckoutPayload } from '@/types'
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, total } = useCart()
+  const [error, setError] = useState<string | null>(null)
+  const [state, dispatch, isPending] = useActionState(checkoutAction, null)
 
   useEffect(() => {
     if (items.length === 0) {
@@ -16,8 +20,49 @@ export default function CheckoutPage() {
     }
   }, [items.length, router])
 
+  // Manejar resultado de la Server Action
+  useEffect(() => {
+    if (!state) return
+
+    if ('redirectUrl' in state) {
+      window.location.href = state.redirectUrl
+    } else if (state.error === 'INSUFFICIENT_STOCK' && 'failedItems' in state) {
+      setError(
+        `Stock insuficiente para algunos productos: ${state.failedItems.join(', ')}`
+      )
+    } else if (state.error === 'VALIDATION_ERROR') {
+      setError(state.message ?? 'Error al procesar el pedido')
+    }
+  }, [state])
+
   if (items.length === 0) {
-    return null
+    return null // Redirigiendo...
+  }
+
+  async function handleSubmit(data: {
+    name: string
+    email: string
+    phone: string
+    address: ShippingAddress
+  }) {
+    setError(null)
+
+    const payload: CheckoutPayload = {
+      items: items.map(i => ({
+        variantId: i.variantId,
+        quantity: i.quantity
+      })),
+      customer: {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        address: data.address
+      }
+    }
+
+    startTransition(() => {
+      dispatch(payload)
+    })
   }
 
   return (
@@ -26,7 +71,7 @@ export default function CheckoutPage() {
 
       <div className="mt-8 grid gap-8 md:grid-cols-5">
         <div className="md:col-span-3">
-          <CheckoutForm />
+          <CheckoutForm onSubmit={handleSubmit} isSubmitting={isPending} />
         </div>
 
         <div className="md:col-span-2">

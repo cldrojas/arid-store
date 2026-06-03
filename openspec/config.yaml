@@ -1,0 +1,35 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Next.js 16 App Router (TypeScript), Tailwind CSS v4, Radix UI, Supabase (Postgres + Auth + Storage), Resend (email)
+  Architecture: Server Components + Client Components, Server Actions (useActionState), Route Handlers for webhooks
+  Testing: Vitest 4 + @testing-library/react + jsdom
+  Style: ESLint flat config, Tailwind v4 class ordering
+  Payments: Fintoc (fintoc SDK, Checkout Pro con WebhookSignature verification)
+  Prices: Always integers in CLP, no decimals
+  Images: Supabase Storage (CDN Cloudflare), not Next.js Image Optimization
+  Secrets: Service-role keys never in client code
+
+rules:
+  proposal:
+    - Include rollback plan
+    - Identify affected modules
+    - Compare effort vs alternatives considered
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase (database, backend, frontend, testing)
+    - Use hierarchical numbering (1, 1.1, 1.2, etc.)
+    - Keep tasks small enough for one session
+  apply:
+    - Follow existing patterns: server actions in lib/actions/, components in components/, types in types/
+    - Load relevant coding skills
+  verify:
+    test_command: "pnpm vitest run"
+    build_command: "pnpm build"
+  archive:
+    - Warn before merging destructive deltas

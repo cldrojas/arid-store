@@ -1,69 +1,36 @@
 'use server'
 
-import { z } from 'zod'
+import { headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/server'
-import { createPreference } from '@/lib/mercadopago'
-import { revalidatePath } from 'next/cache'
+import { createCheckoutSession } from '@/lib/fintoc'
+import type { CheckoutPayload, CheckoutResponse } from '@/types'
 
-const checkoutSchema = z.object({
-  items: z.array(z.object({
-    variantId: z.string().uuid(),
-    quantity: z.number().int().positive()
-  })).min(1, 'El carrito está vacío'),
-  customer: z.object({
-    name: z.string().min(1, 'Nombre requerido'),
-    email: z.string().email('Email inválido'),
-    phone: z.string().optional(),
-    address: z.object({
-      street: z.string().min(1, 'Dirección requerida'),
-      city: z.string().min(1, 'Ciudad requerida'),
-      region: z.string().min(1, 'Región requerida'),
-      zip: z.string().nullable().optional(),
-      notes: z.string().nullable().optional()
-    })
-  })
-})
-
-export type CheckoutState = {
-  success?: boolean
-  initPoint?: string
-  error?: string
-  failedItems?: string[]
-}
-
-export async function checkout(_prevState: CheckoutState, formData: FormData): Promise<CheckoutState> {
+export async function checkoutAction(
+  _prevState: CheckoutResponse | null,
+  payload: CheckoutPayload
+): Promise<CheckoutResponse> {
   try {
-    const rawItems = formData.get('items')
-    const rawCustomer = formData.get('customer')
+    const { items, customer } = payload
 
-    if (!rawItems || !rawCustomer) {
-      return { error: 'Datos incompletos' }
+    // 1. Validación básica
+    if (!items?.length || !customer?.email || !customer?.name) {
+      return { error: 'VALIDATION_ERROR', message: 'Datos incompletos' }
     }
 
-    const parsed = checkoutSchema.safeParse({
-      items: JSON.parse(rawItems as string),
-      customer: JSON.parse(rawCustomer as string)
-    })
-
-    if (!parsed.success) {
-      const firstError = parsed.error.issues[0]?.message ?? 'Datos inválidos'
-      return { error: firstError }
-    }
-
-    const { items, customer } = parsed.data
     const supabase = createAdminClient()
 
-    // Verificar stock
+    // 2. Verificar stock y obtener precios reales desde Supabase
     const variantIds = items.map(i => i.variantId)
     const { data: variants, error: variantsError } = await supabase
       .from('product_variants')
-      .select('id, stock, price_override, size, color, products(name, base_price)')
+      .select('id, stock, price_override, product_id, size, color, products(name, base_price)')
       .in('id', variantIds)
 
     if (variantsError || !variants) {
-      return { error: 'Error al verificar productos' }
+      return { error: 'VALIDATION_ERROR', message: 'Error al verificar productos' }
     }
 
+    // 3. Verificar que todos los variants existen y tienen stock
     const failedItems: string[] = []
     const enrichedItems: Array<{
       variantId: string
@@ -86,7 +53,7 @@ export async function checkout(_prevState: CheckoutState, formData: FormData): P
         continue
       }
 
-      const product = (variant.products as unknown as { name: string; base_price: number } | null)
+      const product = variant.products as unknown as { name: string; base_price: number } | null
       if (!product) {
         failedItems.push(item.variantId)
         continue
@@ -95,22 +62,23 @@ export async function checkout(_prevState: CheckoutState, formData: FormData): P
 
       enrichedItems.push({
         variantId: item.variantId,
-        title: `${product.name} — ${variant.size} ${variant.color}`,
+        title: `${product.name} - Talla ${variant.size} ${variant.color}`,
         unit_price,
         quantity: item.quantity,
-        variantDesc: `${variant.size} — ${variant.color}`
+        variantDesc: `Talla ${variant.size} - ${variant.color}`
       })
     }
 
     if (failedItems.length > 0) {
-      return { error: 'STOCK_INSUFFICIENT', failedItems }
+      return { error: 'INSUFFICIENT_STOCK', failedItems }
     }
 
     const totalAmount = enrichedItems.reduce(
-      (acc, item) => acc + item.unit_price * item.quantity, 0
+      (acc, item) => acc + item.unit_price * item.quantity,
+      0
     )
 
-    // Crear orden
+    // 4. Crear orden en Supabase con status='pending'
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -125,10 +93,10 @@ export async function checkout(_prevState: CheckoutState, formData: FormData): P
       .single()
 
     if (orderError || !order) {
-      return { error: 'Error al crear la orden' }
+      return { error: 'VALIDATION_ERROR', message: 'Error al crear la orden' }
     }
 
-    // Insertar order_items
+    // 5. Insertar order_items
     await supabase.from('order_items').insert(
       enrichedItems.map(item => ({
         order_id: order.id,
@@ -140,38 +108,36 @@ export async function checkout(_prevState: CheckoutState, formData: FormData): P
       }))
     )
 
-    // Crear preferencia en MercadoPago
-    const preference = await createPreference({
+    // 6. Determinar base URL dinámicamente desde la request
+    // Fallback a NEXT_PUBLIC_BASE_URL para tests o entornos sin request scope
+    let baseUrl: string
+    try {
+      const h = await headers()
+      const proto = h.get('x-forwarded-proto') ?? 'https'
+      const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000'
+      baseUrl = `${proto}://${host}`
+    } catch {
+      baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+    }
+
+    // 7. Crear checkout session en Fintoc
+    const session = await createCheckoutSession({
       orderId: order.id,
-      items: enrichedItems.map(i => ({
-        title: i.title,
-        unit_price: i.unit_price,
-        quantity: i.quantity
-      })),
-      payer: {
-        name: customer.name,
-        email: customer.email
-      }
+      amount: totalAmount,
+      customerEmail: customer.email,
+      baseUrl,
     })
 
-    // Guardar preference_id
+    // 8. Guardar payment_session_id en la orden
     await supabase
       .from('orders')
-      .update({ mp_preference_id: preference.id })
+      .update({ payment_session_id: session.sessionId })
       .eq('id', order.id)
 
-    revalidatePath('/admin/pedidos')
-
-    // En desarrollo usar sandbox_init_point (credenciales de prueba),
-    // en producción usar init_point (credenciales de producción activadas)
-    const isDev = process.env.NODE_ENV === 'development'
-    return {
-      success: true,
-      initPoint: isDev ? preference.sandbox_init_point! : preference.init_point!
-    }
+    return { redirectUrl: session.redirectUrl }
 
   } catch (error) {
     console.error('[Checkout Action]', error)
-    return { error: 'Error interno del servidor' }
+    return { error: 'VALIDATION_ERROR', message: 'Error interno del servidor' }
   }
 }
