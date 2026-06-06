@@ -117,7 +117,7 @@ describe('CartDrawer', () => {
       const onClose = vi.fn()
       const { container } = render(<CartDrawer isOpen={true} onClose={onClose} />)
 
-      // Overlay is the div with bg-black/40
+      // Overlay is the div with bg-overlay
       const overlay = container.querySelector('.fixed.inset-0')
       expect(overlay).toBeInTheDocument()
 

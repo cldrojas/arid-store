@@ -17,10 +17,10 @@ export default async function ProductosPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
-      <h1 className="text-2xl font-bold text-neutral-900">Productos</h1>
+      <h1 className="text-2xl font-bold text-content">Productos</h1>
 
       {!products || products.length === 0 ? (
-        <div className="mt-16 text-center text-neutral-500">
+        <div className="mt-16 text-center text-content-muted">
           <p className="text-lg">Próximamente nuevos diseños</p>
           <p className="mt-2 text-sm">
             Estamos trabajando en nuestra colección. Vuelve pronto.

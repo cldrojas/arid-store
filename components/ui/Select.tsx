@@ -32,7 +32,7 @@ export function Select({
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label className="text-sm font-medium text-neutral-700">
+        <label className="text-sm font-medium text-content-tertiary">
           {label}
         </label>
       )}
@@ -42,7 +42,7 @@ export function Select({
         disabled={disabled}
       >
         <RadixSelect.Trigger
-          className={`inline-flex items-center justify-between gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-400 disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-400 ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-400' : ''} ${className}`}
+          className={`inline-flex items-center justify-between gap-2 rounded-lg border border-edge-strong bg-surface px-3 py-2 text-sm text-content transition-colors focus:border-edge-focus focus:outline-none focus:ring-2 focus:ring-edge-focus disabled:cursor-not-allowed disabled:bg-surface-secondary disabled:text-content-muted ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-400' : ''} ${className}`}
         >
           <RadixSelect.Value placeholder={placeholder} />
           <RadixSelect.Icon>
@@ -52,7 +52,7 @@ export function Select({
               viewBox="0 0 12 12"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              className="text-neutral-400"
+              className="text-content-muted"
             >
               <path
                 d="M3 4.5L6 7.5L9 4.5"
@@ -68,7 +68,7 @@ export function Select({
         <RadixSelect.Portal>
           <RadixSelect.Content
             position="popper"
-            className="z-50 mt-1 max-h-60 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg"
+            className="z-50 mt-1 max-h-60 overflow-hidden rounded-lg border border-edge bg-surface shadow-lg"
           >
             <RadixSelect.Viewport className="p-1">
               {items.map((item) => (
@@ -81,7 +81,7 @@ export function Select({
         </RadixSelect.Portal>
       </RadixSelect.Root>
       {error && (
-        <p className="text-xs text-red-600">{error}</p>
+        <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
       )}
     </div>
   )
@@ -95,7 +95,7 @@ const SelectItem = forwardRef<
     <RadixSelect.Item
       ref={ref}
       value={value}
-      className="relative flex cursor-pointer select-none items-center rounded-md px-3 py-2 text-sm text-neutral-900 data-[highlighted]:bg-neutral-100 data-[highlighted]:outline-none"
+      className="relative flex cursor-pointer select-none items-center rounded-md px-3 py-2 text-sm text-content data-[highlighted]:bg-surface-tertiary data-[highlighted]:outline-none"
       {...props}
     >
       <RadixSelect.ItemText>{children}</RadixSelect.ItemText>

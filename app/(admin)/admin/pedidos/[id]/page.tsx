@@ -56,12 +56,12 @@ export default function PedidoDetallePage() {
   }
 
   if (loading) {
-    return <div className="text-center text-neutral-500 py-12">Cargando pedido...</div>
+    return <div className="text-center text-content-muted py-12">Cargando pedido...</div>
   }
 
   if (error || !order) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
         {error ?? 'Pedido no encontrado'}
       </div>
     )
@@ -75,10 +75,10 @@ export default function PedidoDetallePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">
+          <h1 className="text-2xl font-bold text-content">
             Pedido #{shortId(order.id)}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-sm text-content-muted">
             {new Date(order.created_at).toLocaleDateString('es-CL', {
               day: '2-digit',
               month: 'long',
@@ -93,36 +93,36 @@ export default function PedidoDetallePage() {
 
       {/* Datos del cliente */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold text-neutral-900">Datos del cliente</h2>
-        <div className="rounded-xl border border-neutral-200 bg-white p-5 text-sm">
-          <p><span className="text-neutral-500">Nombre:</span> {order.customer_name}</p>
-          <p className="mt-1"><span className="text-neutral-500">Email:</span> {order.customer_email}</p>
+        <h2 className="text-base font-semibold text-content">Datos del cliente</h2>
+        <div className="rounded-xl border border-edge bg-surface p-5 text-sm">
+          <p><span className="text-content-muted">Nombre:</span> {order.customer_name}</p>
+          <p className="mt-1"><span className="text-content-muted">Email:</span> {order.customer_email}</p>
           {order.customer_phone && (
-            <p className="mt-1"><span className="text-neutral-500">Teléfono:</span> {order.customer_phone}</p>
+            <p className="mt-1"><span className="text-content-muted">Teléfono:</span> {order.customer_phone}</p>
           )}
         </div>
       </section>
 
       {/* Dirección de envío */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold text-neutral-900">Dirección de envío</h2>
-        <div className="rounded-xl border border-neutral-200 bg-white p-5 text-sm">
+        <h2 className="text-base font-semibold text-content">Dirección de envío</h2>
+        <div className="rounded-xl border border-edge bg-surface p-5 text-sm">
           <p>{shippingAddress.street}</p>
           <p>{shippingAddress.city}, {shippingAddress.region}</p>
           {shippingAddress.zip && <p>CP: {shippingAddress.zip}</p>}
           {shippingAddress.notes && (
-            <p className="mt-2 text-neutral-500">Notas: {shippingAddress.notes}</p>
+            <p className="mt-2 text-content-muted">Notas: {shippingAddress.notes}</p>
           )}
         </div>
       </section>
 
       {/* Items del pedido */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold text-neutral-900">Items</h2>
-        <div className="overflow-x-auto rounded-xl border border-neutral-200">
+        <h2 className="text-base font-semibold text-content">Items</h2>
+        <div className="overflow-x-auto rounded-xl border border-edge">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-xs font-medium uppercase text-neutral-500">
+              <tr className="border-b border-edge bg-surface-secondary text-left text-xs font-medium uppercase text-content-muted">
                 <th className="px-4 py-3">Producto</th>
                 <th className="px-4 py-3">Variante</th>
                 <th className="px-4 py-3">Cantidad</th>
@@ -132,26 +132,26 @@ export default function PedidoDetallePage() {
             </thead>
             <tbody>
               {order.items?.map(item => (
-                <tr key={item.id} className="border-b border-neutral-100 last:border-0">
-                  <td className="px-4 py-3 font-medium text-neutral-900">{item.product_name}</td>
-                  <td className="px-4 py-3 text-neutral-600">{item.variant_desc}</td>
-                  <td className="px-4 py-3 text-neutral-600">{item.quantity}</td>
-                  <td className="px-4 py-3 text-neutral-900">{formatCLP(item.unit_price)}</td>
-                  <td className="px-4 py-3 font-medium text-neutral-900">{formatCLP(item.unit_price * item.quantity)}</td>
+                <tr key={item.id} className="border-b border-edge last:border-0">
+                  <td className="px-4 py-3 font-medium text-content">{item.product_name}</td>
+                  <td className="px-4 py-3 text-content-secondary">{item.variant_desc}</td>
+                  <td className="px-4 py-3 text-content-secondary">{item.quantity}</td>
+                  <td className="px-4 py-3 text-content">{formatCLP(item.unit_price)}</td>
+                  <td className="px-4 py-3 font-medium text-content">{formatCLP(item.unit_price * item.quantity)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <div className="flex justify-end pr-4">
-          <p className="text-lg font-bold text-neutral-900">Total: {formatCLP(order.total_amount)}</p>
+          <p className="text-lg font-bold text-content">Total: {formatCLP(order.total_amount)}</p>
         </div>
       </section>
 
       {/* Cambiar estado */}
       {allowedTransitions.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-base font-semibold text-neutral-900">Actualizar estado</h2>
+          <h2 className="text-base font-semibold text-content">Actualizar estado</h2>
           <div className="flex gap-3">
             {allowedTransitions.map(newStatus => (
               <Button

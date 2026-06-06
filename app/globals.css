@@ -1,26 +1,105 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-surface-inverse: var(--surface-inverse);
+
+  --color-content: var(--content);
+  --color-content-secondary: var(--content-secondary);
+  --color-content-tertiary: var(--content-tertiary);
+  --color-content-muted: var(--content-muted);
+  --color-content-inverse: var(--content-inverse);
+
+  --color-edge: var(--edge);
+  --color-edge-strong: var(--edge-strong);
+  --color-edge-focus: var(--edge-focus);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-content: var(--accent-content);
+
+  --color-overlay: var(--overlay);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Light theme ── */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  --surface: #ffffff;
+  --surface-secondary: #fafafa;
+  --surface-tertiary: #f5f5f5;
+  --surface-inverse: #fafafa;
+
+  --content: #171717;
+  --content-secondary: #525252;
+  --content-tertiary: #404040;
+  --content-muted: #a3a3a3;
+  --content-inverse: #ffffff;
+
+  --edge: #e5e5e5;
+  --edge-strong: #d4d4d4;
+  --edge-focus: #a3a3a3;
+
+  --accent: #171717;
+  --accent-hover: #555555;
+  --accent-content: #ffffff;
+
+  --overlay: rgba(0, 0, 0, 0.4);
+}
+
+/* ── Rhys Dark theme ── */
+.dark {
+  --background: #1a1a1a;
+  --foreground: #e8e6e3;
+
+  --surface: #1a1a1a;
+  --surface-secondary: #242424;
+  --surface-tertiary: #2a2a2a;
+  --surface-inverse: #e8e6e3;
+
+  --content: #e8e6e3;
+  --content-secondary: #a0988e;
+  --content-tertiary: #b8b0a4;
+  --content-muted: #6b6258;
+  --content-inverse: #1a1a1a;
+
+  --edge: #3a3530;
+  --edge-strong: #4a4440;
+  --edge-focus: #6b6258;
+
+  --accent: #d4a853;
+  --accent-hover: #e6c06a;
+  --accent-content: #1a1a1a;
+
+  --overlay: rgba(0, 0, 0, 0.6);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ── Smooth theme transitions ── */
+*,
+*::before,
+*::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.15s ease,
+    box-shadow 0.3s ease;
+}
+
+/* Excluir animaciones/transiciones de los elementos que no queremos */
+.no-theme-transition,
+.no-theme-transition *,
+.no-theme-transition *::before,
+.no-theme-transition *::after {
+  transition: none !important;
 }

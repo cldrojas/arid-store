@@ -21,16 +21,16 @@ export default async function AdminProductosPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-neutral-900">Productos</h1>
+        <h1 className="text-2xl font-bold text-content">Productos</h1>
         <Link href="/admin/productos/nuevo">
           <Button>Nuevo producto</Button>
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-neutral-200">
+      <div className="overflow-x-auto rounded-xl border border-edge">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-xs font-medium uppercase text-neutral-500">
+            <tr className="border-b border-edge bg-surface-secondary text-left text-xs font-medium uppercase text-content-muted">
               <th className="px-4 py-3">Imagen</th>
               <th className="px-4 py-3">Nombre</th>
               <th className="px-4 py-3">Precio</th>
@@ -43,7 +43,7 @@ export default async function AdminProductosPage() {
           <tbody>
             {!products || products.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-neutral-400">
+                <td colSpan={7} className="px-4 py-12 text-center text-content-muted">
                   No hay productos
                 </td>
               </tr>
@@ -56,7 +56,7 @@ export default async function AdminProductosPage() {
                 return (
                   <tr
                     key={product.id}
-                    className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50"
+                    className="border-b border-edge last:border-0 hover:bg-surface-secondary"
                   >
                     <td className="px-4 py-3">
                       {primaryImage ? (
@@ -66,29 +66,29 @@ export default async function AdminProductosPage() {
                           className="h-12 w-12 rounded-lg object-cover"
                         />
                       ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 text-xs text-neutral-400">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-surface-tertiary text-xs text-content-muted">
                           Sin img
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-neutral-900">{product.name}</p>
-                      <p className="text-xs text-neutral-400">{product.slug}</p>
+                      <p className="font-medium text-content">{product.name}</p>
+                      <p className="text-xs text-content-muted">{product.slug}</p>
                     </td>
-                    <td className="px-4 py-3 font-medium text-neutral-900">
+                    <td className="px-4 py-3 font-medium text-content">
                       {formatCLP(product.base_price)}
                     </td>
-                    <td className="px-4 py-3 text-neutral-600">
+                    <td className="px-4 py-3 text-content-secondary">
                       {variantCount}
                     </td>
-                    <td className="px-4 py-3 text-neutral-600">
+                    <td className="px-4 py-3 text-content-secondary">
                       {totalStock}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                         product.is_active
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-neutral-100 text-neutral-500'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                          : 'bg-surface-tertiary text-content-muted'
                       }`}>
                         {product.is_active ? 'Activo' : 'Inactivo'}
                       </span>
@@ -96,7 +96,7 @@ export default async function AdminProductosPage() {
                     <td className="px-4 py-3">
                       <Link
                         href={`/admin/productos/${product.id}`}
-                        className="text-sm font-medium text-neutral-600 hover:text-neutral-900"
+                        className="text-sm font-medium text-content-secondary hover:text-content"
                       >
                         Editar
                       </Link>

@@ -90,12 +90,12 @@ export default function EditarProductoPage() {
   }, [params.id])
 
   if (loading) {
-    return <div className="text-center text-neutral-500 py-12">Cargando producto...</div>
+    return <div className="text-center text-content-muted py-12">Cargando producto...</div>
   }
 
   if (error && !data) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
         {error}
       </div>
     )
@@ -103,7 +103,7 @@ export default function EditarProductoPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-neutral-900">Editar producto</h1>
+      <h1 className="text-2xl font-bold text-content">Editar producto</h1>
       {data && <ProductForm initialData={data} />}
     </div>
   )

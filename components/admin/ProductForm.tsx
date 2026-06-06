@@ -128,14 +128,14 @@ export function ProductForm({ initialData }: ProductFormProps) {
   return (
     <form action={formAction} className="space-y-8">
       {(validationError || state?.error) && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
           {validationError ?? state!.error}
         </div>
       )}
 
       {/* Datos básicos */}
       <section className="space-y-4">
-        <h3 className="text-base font-semibold text-neutral-900">
+        <h3 className="text-base font-semibold text-content">
           Información del producto
         </h3>
 
@@ -145,12 +145,12 @@ export function ProductForm({ initialData }: ProductFormProps) {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-neutral-700">Descripción</label>
+          <label className="text-sm font-medium text-content-tertiary">Descripción</label>
           <textarea
             value={description}
             onChange={e => setDescription(e.target.value)}
             rows={4}
-            className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 transition-colors focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            className="mt-1.5 w-full rounded-lg border border-edge-strong px-3 py-2 text-sm text-content placeholder-content-muted transition-colors focus:border-edge-focus focus:outline-none focus:ring-2 focus:ring-edge-focus"
           />
         </div>
 
@@ -167,9 +167,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
               type="checkbox"
               checked={isActive}
               onChange={e => setIsActive(e.target.checked)}
-              className="h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-400"
+              className="h-4 w-4 rounded border-edge-strong text-accent focus:ring-edge-focus"
             />
-            <span className="text-sm text-neutral-700">Producto activo</span>
+            <span className="text-sm text-content-tertiary">Producto activo</span>
           </label>
         </div>
       </section>
@@ -177,20 +177,20 @@ export function ProductForm({ initialData }: ProductFormProps) {
       {/* Variantes */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-neutral-900">Variantes</h3>
+          <h3 className="text-base font-semibold text-content">Variantes</h3>
           <Button type="button" variant="outline" size="sm" onClick={addVariant}>
             + Agregar variante
           </Button>
         </div>
 
         {variants.map((v, i) => (
-          <div key={i} className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-200 p-4">
+          <div key={i} className="flex flex-wrap items-end gap-3 rounded-xl border border-edge p-4">
             <div>
-              <label className="text-xs font-medium text-neutral-500">Talla</label>
+              <label className="text-xs font-medium text-content-muted">Talla</label>
               <select
                 value={v.size}
                 onChange={e => updateVariant(i, 'size', e.target.value)}
-                className="mt-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className="mt-1 rounded-lg border border-edge-strong px-3 py-2 text-sm bg-surface text-content"
               >
                 {SIZES.map(s => (
                   <option key={s} value={s}>{s}</option>
@@ -212,14 +212,14 @@ export function ProductForm({ initialData }: ProductFormProps) {
       {/* Imágenes */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-neutral-900">Imágenes</h3>
+          <h3 className="text-base font-semibold text-content">Imágenes</h3>
           <Button type="button" variant="outline" size="sm" onClick={addImage}>
             + Agregar imagen
           </Button>
         </div>
 
         {images.map((img, i) => (
-          <div key={i} className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-200 p-4">
+          <div key={i} className="flex flex-wrap items-end gap-3 rounded-xl border border-edge p-4">
             <Input label="Storage path" value={img.storage_path} onChange={e => updateImage(i, 'storage_path', e.target.value)} className="min-w-[200px]" />
             <Input label="Alt text" value={img.alt_text} onChange={e => updateImage(i, 'alt_text', e.target.value)} />
             <Input label="Orden" type="number" value={String(img.sort_order)} onChange={e => updateImage(i, 'sort_order', Number(e.target.value))} className="w-20" />
@@ -228,9 +228,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 type="checkbox"
                 checked={img.is_primary}
                 onChange={e => updateImage(i, 'is_primary', e.target.checked)}
-                className="h-4 w-4 rounded border-neutral-300 text-neutral-900"
+                className="h-4 w-4 rounded border-edge-strong text-accent"
               />
-              <span className="text-xs text-neutral-600">Principal</span>
+              <span className="text-xs text-content-secondary">Principal</span>
             </label>
             <Button type="button" variant="ghost" size="sm" onClick={() => removeImage(i)} className="text-red-500">Eliminar</Button>
           </div>

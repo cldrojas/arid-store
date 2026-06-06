@@ -66,16 +66,16 @@ export function ProductDetailClient({ product }: ProductDetailProps) {
         {/* Info */}
         <div className="space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">
+            <h1 className="text-2xl font-bold text-content">
               {product.name}
             </h1>
-            <p className="mt-2 text-2xl font-semibold text-neutral-900">
+            <p className="mt-2 text-2xl font-semibold text-content">
               {formatCLP(price)}
             </p>
           </div>
 
           {product.description && (
-            <p className="text-sm leading-relaxed text-neutral-600">
+            <p className="text-sm leading-relaxed text-content-secondary">
               {product.description}
             </p>
           )}
@@ -98,7 +98,7 @@ export function ProductDetailClient({ product }: ProductDetailProps) {
 
           {/* Stock indicator */}
           {selectedVariant && (
-            <p className={`text-sm ${stock < 5 && stock > 0 ? 'text-amber-600' : 'text-neutral-500'}`}>
+            <p className={`text-sm ${stock < 5 && stock > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-content-muted'}`}>
               {stock === 0
                 ? 'Sin stock'
                 : stock < 5

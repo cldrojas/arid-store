@@ -22,13 +22,13 @@ function ResultadoContent() {
   if (status === 'approved') {
     return (
       <div className="mx-auto max-w-md px-4 py-24 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
           <svg
             width="32"
             height="32"
             viewBox="0 0 24 24"
             fill="none"
-            className="text-green-600"
+            className="text-green-600 dark:text-green-300"
           >
             <path
               d="M5 13L9 17L19 7"
@@ -39,10 +39,10 @@ function ResultadoContent() {
             />
           </svg>
         </div>
-        <h1 className="mt-6 text-2xl font-bold text-neutral-900">
+        <h1 className="mt-6 text-2xl font-bold text-content">
           ¡Pago exitoso!
         </h1>
-        <p className="mt-3 text-neutral-600">
+        <p className="mt-3 text-content-secondary">
           Recibimos tu pedido. Te enviaremos un email de confirmación con los
           detalles y te avisaremos cuando sea despachado.
         </p>
@@ -56,13 +56,13 @@ function ResultadoContent() {
   if (status === 'rejected') {
     return (
       <div className="mx-auto max-w-md px-4 py-24 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
           <svg
             width="32"
             height="32"
             viewBox="0 0 24 24"
             fill="none"
-            className="text-red-600"
+            className="text-red-600 dark:text-red-300"
           >
             <path
               d="M6 6L18 18M18 6L6 18"
@@ -72,10 +72,10 @@ function ResultadoContent() {
             />
           </svg>
         </div>
-        <h1 className="mt-6 text-2xl font-bold text-neutral-900">
+        <h1 className="mt-6 text-2xl font-bold text-content">
           Pago rechazado
         </h1>
-        <p className="mt-3 text-neutral-600">
+        <p className="mt-3 text-content-secondary">
           El pago no pudo ser procesado. Puedes intentar con otro medio de pago.
         </p>
         <Link href="/checkout">
@@ -88,13 +88,13 @@ function ResultadoContent() {
   // pending or unknown
   return (
     <div className="mx-auto max-w-md px-4 py-24 text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
         <svg
           width="32"
           height="32"
           viewBox="0 0 24 24"
           fill="none"
-          className="text-amber-600"
+          className="text-amber-600 dark:text-amber-300"
         >
           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
           <path
@@ -105,10 +105,10 @@ function ResultadoContent() {
           />
         </svg>
       </div>
-      <h1 className="mt-6 text-2xl font-bold text-neutral-900">
+      <h1 className="mt-6 text-2xl font-bold text-content">
         Pago pendiente
       </h1>
-      <p className="mt-3 text-neutral-600">
+      <p className="mt-3 text-content-secondary">
         El pago está siendo procesado. Te notificaremos por email cuando se
         confirme.
       </p>
@@ -125,7 +125,7 @@ export default function ResultadoPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-md px-4 py-24 text-center text-neutral-500">
+        <div className="mx-auto max-w-md px-4 py-24 text-center text-content-muted">
           Cargando...
         </div>
       }

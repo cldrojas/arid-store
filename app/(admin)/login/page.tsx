@@ -35,11 +35,11 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-surface-secondary px-4">
       <div className="w-full max-w-sm">
-        <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
-          <h1 className="text-xl font-bold text-neutral-900">Admin</h1>
-          <p className="mt-1 text-sm text-neutral-500">
+        <div className="rounded-xl border border-edge bg-surface p-8 shadow-sm">
+          <h1 className="text-xl font-bold text-content">Admin</h1>
+          <p className="mt-1 text-sm text-content-muted">
             Inicia sesión para administrar la tienda
           </p>
 
@@ -62,7 +62,7 @@ export default function AdminLoginPage() {
             />
 
             {error && (
-              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             )}
 
             <Button type="submit" disabled={loading} className="w-full">
