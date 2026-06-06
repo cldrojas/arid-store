@@ -10,10 +10,13 @@ import type { ReactNode } from 'react'
 function StoreHeader() {
   const [cartOpen, setCartOpen] = useState(false)
   const { itemCount } = useCart()
+  const isDev = process.env.NODE_ENV === 'development'
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-edge bg-surface">
+      <header className={`sticky top-0 z-30 border-b bg-surface ${
+        isDev ? 'border-fuchsia-400' : 'border-edge'
+      }`}>
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link href="/" className="text-lg font-bold text-content">
             Arid Store

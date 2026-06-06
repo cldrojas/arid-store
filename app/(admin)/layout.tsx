@@ -16,6 +16,7 @@ const NAV_ITEMS = [
 function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const isDev = process.env.NODE_ENV === 'development'
 
   // No mostrar sidebar en login
   if (pathname === '/login') return null
@@ -28,7 +29,9 @@ function AdminSidebar() {
   }
 
   return (
-    <aside className="flex w-64 flex-col border-r border-edge bg-surface">
+    <aside className={`flex w-64 flex-col border-r bg-surface ${
+      isDev ? 'border-fuchsia-400' : 'border-edge'
+    }`}>
       {/* Logo */}
       <div className="flex h-16 items-center border-b border-edge px-6">
         <div className="flex w-full items-center justify-between">
