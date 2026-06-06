@@ -24,7 +24,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link href={`/producto/${product.slug}`} className="group block">
-      <div className="aspect-square overflow-hidden rounded-lg bg-neutral-100">
+      <div className="aspect-square overflow-hidden rounded-lg bg-surface-tertiary">
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -40,10 +40,10 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
       </div>
       <div className="mt-3 space-y-1">
-        <h3 className="text-sm font-medium text-neutral-900">
+        <h3 className="text-sm font-medium text-content">
           {product.name}
         </h3>
-        <p className="text-sm text-neutral-700">
+        <p className="text-sm text-content-tertiary">
           {formatCLP(product.base_price)}
         </p>
       </div>

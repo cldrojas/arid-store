@@ -47,8 +47,8 @@ export function OrdersTable({ orders }: OrdersTableProps) {
             onClick={() => setFilter(f.value)}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
               filter === f.value
-                ? 'bg-neutral-900 text-white'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                ? 'bg-accent text-accent-content'
+                : 'bg-surface-tertiary text-content-secondary hover:bg-edge'
             }`}
           >
             {f.label}
@@ -57,10 +57,10 @@ export function OrdersTable({ orders }: OrdersTableProps) {
       </div>
 
       {/* Tabla */}
-      <div className="overflow-x-auto rounded-xl border border-neutral-200">
+      <div className="overflow-x-auto rounded-xl border border-edge">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-xs font-medium uppercase text-neutral-500">
+            <tr className="border-b border-edge bg-surface-secondary text-left text-xs font-medium uppercase text-content-muted">
               <th className="px-4 py-3">ID</th>
               <th className="px-4 py-3">Fecha</th>
               <th className="px-4 py-3">Cliente</th>
@@ -71,7 +71,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-neutral-400">
+                <td colSpan={5} className="px-4 py-12 text-center text-content-muted">
                   No hay pedidos
                 </td>
               </tr>
@@ -79,26 +79,26 @@ export function OrdersTable({ orders }: OrdersTableProps) {
               filtered.map(order => (
                 <tr
                   key={order.id}
-                  className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50"
+                  className="border-b border-edge last:border-0 hover:bg-surface-secondary"
                 >
                   <td className="px-4 py-3">
                     <Link
                       href={`/admin/pedidos/${order.id}`}
-                      className="font-mono text-sm font-medium text-neutral-900 hover:text-neutral-600"
+                      className="font-mono text-sm font-medium text-content hover:text-content-secondary"
                     >
                       {shortId(order.id)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-neutral-600">
+                  <td className="px-4 py-3 text-content-secondary">
                     {formatDate(order.created_at)}
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-neutral-900">{order.customer_name}</p>
-                    <p className="text-xs text-neutral-400">
+                    <p className="text-content">{order.customer_name}</p>
+                    <p className="text-xs text-content-muted">
                       {order.customer_email}
                     </p>
                   </td>
-                  <td className="px-4 py-3 font-medium text-neutral-900">
+                  <td className="px-4 py-3 font-medium text-content">
                     {formatCLP(order.total_amount)}
                   </td>
                   <td className="px-4 py-3">

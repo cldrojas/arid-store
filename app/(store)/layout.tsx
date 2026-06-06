@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { CartProvider, useCart } from '@/context/CartContext'
 import { CartDrawer } from '@/components/store/CartDrawer'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import type { ReactNode } from 'react'
 
 function StoreHeader() {
@@ -12,23 +13,25 @@ function StoreHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white">
+      <header className="sticky top-0 z-30 border-b border-edge bg-surface">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <Link href="/" className="text-lg font-bold text-neutral-900">
+          <Link href="/" className="text-lg font-bold text-content">
             Arid Store
           </Link>
 
           <nav className="flex items-center gap-6">
             <Link
               href="/productos"
-              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+              className="text-sm text-content-secondary hover:text-content transition-colors"
             >
               Productos
             </Link>
 
+            <ThemeToggle />
+
             <button
               onClick={() => setCartOpen(true)}
-              className="relative rounded-md p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+              className="relative rounded-md p-2 text-content-secondary hover:text-content hover:bg-surface-tertiary transition-colors"
               aria-label="Abrir carrito"
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -43,7 +46,7 @@ function StoreHeader() {
                 <circle cx="14" cy="16" r="1" fill="currentColor" />
               </svg>
               {itemCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-neutral-900 text-[10px] font-bold text-white">
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-accent-content text-[10px] font-bold">
                   {itemCount > 9 ? '9+' : itemCount}
                 </span>
               )}
@@ -61,7 +64,7 @@ export default function StoreLayout({ children }: { children: ReactNode }) {
   return (
     <CartProvider>
       <StoreHeader />
-      <main className="flex-1 bg-linear-to-b from-neutral-50 to-white">{children}</main>
+      <main className="flex-1 bg-linear-to-b from-surface-secondary to-surface">{children}</main>
       <StoreFooter />
     </CartProvider>
   )
@@ -69,9 +72,9 @@ export default function StoreLayout({ children }: { children: ReactNode }) {
 
 function StoreFooter() {
   return (
-    <footer className="border-t border-neutral-200 bg-neutral-50">
+    <footer className="border-t border-edge bg-surface-secondary">
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <p className="text-center text-sm text-neutral-500">
+        <p className="text-center text-sm text-content-muted">
           © {new Date().getFullYear()} Arid Store. Todos los derechos reservados.
         </p>
       </div>

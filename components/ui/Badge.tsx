@@ -9,10 +9,14 @@ type BadgeProps = {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: 'bg-neutral-100 text-neutral-700',
-  success: 'bg-green-100 text-green-700',
-  warning: 'bg-amber-100 text-amber-700',
-  error: 'bg-red-100 text-red-700'
+  default:
+    'bg-surface-tertiary text-content-secondary dark:bg-neutral-800 dark:text-neutral-300',
+  success:
+    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  warning:
+    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  error:
+    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
 }
 
 export function Badge({

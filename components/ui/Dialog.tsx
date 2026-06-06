@@ -28,13 +28,13 @@ export function Dialog({
         </RadixDialog.Trigger>
       )}
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
-        <RadixDialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl">
-          <RadixDialog.Title className="text-lg font-semibold text-neutral-900">
+        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-overlay" />
+        <RadixDialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-surface p-6 shadow-xl">
+          <RadixDialog.Title className="text-lg font-semibold text-content">
             {title}
           </RadixDialog.Title>
           {description && (
-            <RadixDialog.Description className="mt-2 text-sm text-neutral-600">
+            <RadixDialog.Description className="mt-2 text-sm text-content-secondary">
               {description}
             </RadixDialog.Description>
           )}
@@ -43,7 +43,7 @@ export function Dialog({
           </div>
           <RadixDialog.Close asChild>
             <button
-              className="absolute right-4 top-4 inline-flex items-center justify-center rounded-md p-1 text-neutral-400 hover:text-neutral-600 focus:outline-none"
+              className="absolute right-4 top-4 inline-flex items-center justify-center rounded-md p-1 text-content-muted hover:text-content-secondary focus:outline-none"
               aria-label="Cerrar"
             >
               <svg

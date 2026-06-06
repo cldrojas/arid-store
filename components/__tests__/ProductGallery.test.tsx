@@ -102,13 +102,13 @@ describe('ProductGallery', () => {
     expect(getMainImageAlt()).toBe('Vista trasera')
   })
 
-  it('highlights the active thumbnail with border-neutral-900', () => {
+  it('highlights the active thumbnail with border-accent', () => {
     render(<ProductGallery images={multipleImages} />)
 
     const thumbnails = screen.getAllByRole('button')
 
     // First thumbnail should be active initially
-    expect(thumbnails[0]).toHaveClass('border-neutral-900')
+    expect(thumbnails[0]).toHaveClass('border-accent')
     expect(thumbnails[1]).toHaveClass('border-transparent')
 
     // Click the second thumbnail
@@ -116,7 +116,7 @@ describe('ProductGallery', () => {
 
     // Now second should be active
     expect(thumbnails[0]).toHaveClass('border-transparent')
-    expect(thumbnails[1]).toHaveClass('border-neutral-900')
+    expect(thumbnails[1]).toHaveClass('border-accent')
   })
 
   it('generates image URLs with object public endpoint', () => {

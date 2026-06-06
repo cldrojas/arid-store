@@ -16,13 +16,13 @@ type ButtonProps = {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-neutral-900 text-white hover:bg-neutral-800 active:bg-neutral-950 disabled:bg-neutral-300',
+    'bg-accent text-accent-content hover:bg-accent-hover hover:scale-[1.02] active:scale-[0.98] active:opacity-80 disabled:opacity-50',
   secondary:
-    'bg-neutral-100 text-neutral-900 hover:bg-neutral-200 active:bg-neutral-300 disabled:bg-neutral-100 disabled:text-neutral-400',
+    'bg-surface-tertiary text-content hover:bg-surface-secondary active:bg-edge-strong disabled:opacity-50',
   outline:
-    'border border-neutral-300 text-neutral-900 hover:bg-neutral-50 active:bg-neutral-100 disabled:border-neutral-200 disabled:text-neutral-400',
+    'border border-edge-strong text-content hover:bg-surface-secondary active:bg-surface-tertiary disabled:opacity-50',
   ghost:
-    'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 active:bg-neutral-200 disabled:text-neutral-300'
+    'text-content-secondary hover:text-content hover:bg-surface-tertiary active:bg-surface-secondary disabled:opacity-50'
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -45,7 +45,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) {
     const baseStyles =
-      'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 disabled:pointer-events-none cursor-pointer'
+      'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-edge-focus focus-visible:ring-offset-2 disabled:pointer-events-none cursor-pointer'
 
     const classes = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`
 

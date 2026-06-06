@@ -98,7 +98,7 @@ export function CheckoutForm({ onSubmit, isSubmitting }: CheckoutFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-4">
-        <h3 className="text-base font-semibold text-neutral-900">Datos del cliente</h3>
+        <h3 className="text-base font-semibold text-content">Datos del cliente</h3>
 
         <Input
           label="Nombre completo"
@@ -127,7 +127,7 @@ export function CheckoutForm({ onSubmit, isSubmitting }: CheckoutFormProps) {
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-base font-semibold text-neutral-900">Dirección de envío</h3>
+        <h3 className="text-base font-semibold text-content">Dirección de envío</h3>
 
         <Input
           label="Calle y número"

@@ -16,7 +16,7 @@ export function CartItem({ item }: CartItemProps) {
   return (
     <div className="flex gap-4 py-4">
       {/* Thumbnail */}
-      <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-100">
+      <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-surface-tertiary">
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
@@ -24,7 +24,7 @@ export function CartItem({ item }: CartItemProps) {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-neutral-400">
+          <div className="flex h-full items-center justify-center text-xs text-content-muted">
             Sin img
           </div>
         )}
@@ -33,10 +33,10 @@ export function CartItem({ item }: CartItemProps) {
       {/* Info */}
       <div className="flex flex-1 flex-col justify-between">
         <div>
-          <p className="text-sm font-medium text-neutral-900">
+          <p className="text-sm font-medium text-content">
             {item.productName}
           </p>
-          <p className="text-xs text-neutral-500">{item.variantDesc}</p>
+          <p className="text-xs text-content-muted">{item.variantDesc}</p>
         </div>
 
         <div className="flex items-center justify-between">
@@ -44,7 +44,7 @@ export function CartItem({ item }: CartItemProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-neutral-300 text-neutral-600 hover:bg-neutral-100"
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-edge-strong text-content-secondary hover:bg-surface-tertiary"
               aria-label="Reducir cantidad"
             >
               −
@@ -54,7 +54,7 @@ export function CartItem({ item }: CartItemProps) {
             </span>
             <button
               onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-neutral-300 text-neutral-600 hover:bg-neutral-100"
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-edge-strong text-content-secondary hover:bg-surface-tertiary"
               aria-label="Aumentar cantidad"
             >
               +
@@ -63,12 +63,12 @@ export function CartItem({ item }: CartItemProps) {
 
           {/* Price and remove */}
           <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold text-neutral-900">
+            <span className="text-sm font-semibold text-content">
               {formatCLP(subtotal)}
             </span>
             <button
               onClick={() => removeItem(item.variantId)}
-              className="text-xs text-neutral-400 hover:text-red-500"
+              className="text-xs text-content-muted hover:text-red-500"
               aria-label="Eliminar item"
             >
               Eliminar

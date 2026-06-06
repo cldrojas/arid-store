@@ -82,7 +82,7 @@ describe('VariantSelector with type="size"', () => {
     expect(buttons[4]).toHaveTextContent('XXL')
   })
 
-  it('marks the selectedValue as active with bg-neutral-900 class', () => {
+  it('marks the selectedValue as active with bg-accent class', () => {
     render(
       <VariantSelector
         variants={sizeVariants}
@@ -96,9 +96,9 @@ describe('VariantSelector with type="size"', () => {
     const selectedButton = buttons.find(btn => btn.textContent === 'M')
     const unselectedButton = buttons.find(btn => btn.textContent === 'S')
 
-    expect(selectedButton).toHaveClass('bg-neutral-900')
-    expect(selectedButton).toHaveClass('text-white')
-    expect(unselectedButton).not.toHaveClass('bg-neutral-900')
+    expect(selectedButton).toHaveClass('bg-accent')
+    expect(selectedButton).toHaveClass('text-accent-content')
+    expect(unselectedButton).not.toHaveClass('bg-accent')
   })
 
   it('disables size buttons that have no stock', () => {
@@ -169,7 +169,7 @@ describe('VariantSelector with type="color"', () => {
     expect(screen.getByTitle('Rojo')).toBeInTheDocument()
   })
 
-  it('marks the selected color with border-neutral-900 class', () => {
+  it('marks the selected color with border-accent class', () => {
     render(
       <VariantSelector
         variants={colorVariants}
@@ -184,8 +184,8 @@ describe('VariantSelector with type="color"', () => {
     const negroSwatch = negroBtn.querySelector('span')
     const blancoSwatch = blancoBtn.querySelector('span')
 
-    expect(negroSwatch).toHaveClass('border-neutral-900')
-    expect(blancoSwatch).toHaveClass('border-neutral-300')
+    expect(negroSwatch).toHaveClass('border-accent')
+    expect(blancoSwatch).toHaveClass('border-edge-strong')
   })
 
   it('shows the name of the selected color', () => {

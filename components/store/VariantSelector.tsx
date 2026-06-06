@@ -23,7 +23,7 @@ export function VariantSelector({
 
     return (
       <div className="space-y-2">
-        <label className="text-sm font-medium text-neutral-700">Talla</label>
+        <label className="text-sm font-medium text-content-tertiary">Talla</label>
         <div className="flex flex-wrap gap-2">
           {uniqueSizes.map(size => {
             const hasStock = variants.some(
@@ -36,10 +36,10 @@ export function VariantSelector({
                 disabled={!hasStock}
                 className={`min-w-[48px] rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
                   selectedValue === size
-                    ? 'border-neutral-900 bg-neutral-900 text-white'
+                    ? 'border-accent bg-accent text-accent-content'
                     : hasStock
-                      ? 'border-neutral-300 text-neutral-900 hover:border-neutral-500'
-                      : 'cursor-not-allowed border-neutral-200 text-neutral-300 opacity-40'
+                      ? 'border-edge-strong text-content hover:border-content-muted'
+                      : 'cursor-not-allowed border-edge text-content-muted opacity-40'
                 }`}
               >
                 {size}
@@ -63,7 +63,7 @@ export function VariantSelector({
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-neutral-700">Color</label>
+      <label className="text-sm font-medium text-content-tertiary">Color</label>
       <div className="flex flex-wrap gap-3">
         {uniqueColors.map(({ color, color_hex }) => {
           const hasStock = variants.some(
@@ -82,8 +82,8 @@ export function VariantSelector({
               <span
                 className={`block h-10 w-10 rounded-full border-2 ${
                   selectedValue === color
-                    ? 'border-neutral-900'
-                    : 'border-neutral-300'
+                    ? 'border-accent'
+                    : 'border-edge-strong'
                 }`}
                 style={{
                   backgroundColor: color_hex || '#e5e5e5'
@@ -91,7 +91,7 @@ export function VariantSelector({
               />
               {!hasStock && (
                 <span className="absolute inset-0 flex items-center justify-center">
-                  <span className="h-0.5 w-8 rotate-45 rounded-full bg-neutral-400" />
+                  <span className="h-0.5 w-8 rotate-45 rounded-full bg-content-muted" />
                 </span>
               )}
             </button>
@@ -99,7 +99,7 @@ export function VariantSelector({
         })}
       </div>
       {selectedValue && (
-        <p className="text-xs text-neutral-500 capitalize">{selectedValue}</p>
+        <p className="text-xs text-content-muted capitalize">{selectedValue}</p>
       )}
     </div>
   )
